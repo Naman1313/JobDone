@@ -47,8 +47,11 @@ JobDone serves two primary groups, with a UX designed specifically for their nee
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/JobDone.git
+git clone https://github.com/Naman1313/JobDone.git
 ```
 
 ---
-*Built with ❤️*
+*Built with ❤️ by:*
+- **Harsh Panchal** ([@Harsh-Panchal-1](https://github.com/Harsh-Panchal-1))
+- **Naman Chaudhaury** ([@Naman1313](https://github.com/Naman1313))
+- **Paras Tripathi** ([@paras738](https://github.com/paras738))
