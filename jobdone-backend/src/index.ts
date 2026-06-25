@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
 import './config/firebase';
+import './config/cloudinary';
 
 dotenv.config();
 
