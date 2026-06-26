@@ -10,6 +10,7 @@ import './config/cloudinary';
 import authRoutes from './routes/authRoutes';
 import profileRoutes from './routes/profileRoutes';
 import jobRoutes from './routes/jobRoutes';
+import portfolioRoutes from './routes/portfolioRoutes';
 
 dotenv.config();
 
@@ -35,6 +36,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/workers', profileRoutes);
 app.use('/api/jobs', jobRoutes);
+
+app.use('/api/portfolio', portfolioRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
