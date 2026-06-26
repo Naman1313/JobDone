@@ -51,7 +51,7 @@ export const getJobs = async (req: AuthRequest, res: Response): Promise<void> =>
 export const createJob = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { title, description, trade, budget, coordinates, address, urgency, expiryDays } = req.body;
-        
+
         if (!req.user || req.user.role !== 'client') {
             res.status(403).json({ success: false, message: 'Only clients can post jobs' });
             return;
@@ -130,7 +130,7 @@ export const getJobApplicants = async (req: AuthRequest, res: Response): Promise
         const { id } = req.params;
 
         const job = await Job.findById(id);
-        
+
         if (!job) {
             res.status(404).json({ success: false, message: 'Job not found' });
             return;
@@ -157,14 +157,14 @@ export const getJobApplicants = async (req: AuthRequest, res: Response): Promise
 export const hireWorker = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id, workerId } = req.params;
-        
+
         if (!req.user || req.user.role !== 'client') {
             res.status(403).json({ success: false, message: 'Only clients can hire workers' });
             return;
         }
 
         const job = await Job.findById(id);
-        
+
         if (!job) {
             res.status(404).json({ success: false, message: 'Job not found' });
             return;
@@ -189,7 +189,7 @@ export const hireWorker = async (req: AuthRequest, res: Response): Promise<void>
 
         // Update Job Status
         job.status = 'filled';
-        job.selectedWorker = new mongoose.Types.ObjectId(workerId);
+        job.selectedWorker = new mongoose.Types.ObjectId(workerId as string);
         await job.save();
 
         // Create Booking Record
@@ -199,7 +199,7 @@ export const hireWorker = async (req: AuthRequest, res: Response): Promise<void>
         const platformFee = job.budget * 0.05; // 5% fee
         const newBooking = await Booking.create({
             jobId: job._id,
-            workerId: workerId,
+            workerId: new mongoose.Types.ObjectId(workerId as string),
             clientId: req.user.userId,
             scheduledAt: scheduledDate,
             status: 'requested',
@@ -212,8 +212,8 @@ export const hireWorker = async (req: AuthRequest, res: Response): Promise<void>
 
         // Trigger Notification Logic Here (Phase 4)
 
-        res.status(200).json({ 
-            success: true, 
+        res.status(200).json({
+            success: true,
             message: 'Worker hired successfully, booking created',
             data: { job, booking: newBooking }
         });
