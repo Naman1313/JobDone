@@ -1,35 +1,66 @@
 export const initialStories = [
   {
-    id: "story-rohan",
-    name: "Rohan K.",
+    id: "story-arjun",
+    name: "Arjun",
+    distance: "1000m away",
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBSNI8ErWW6rZgTe9yzZpYOiNH_7Hqbnf0kErZgYUHT1jl5z-cE2WUP6UuP4-CI_RqdztrTVpz3SxoqGBA0ZjV_XAHR5P7r-Jvw4EF_Zcq1KrKNmrMEAPwj3U1D63NR5nN-GiL8v1HKzVy3E0VUv4hMQdLqNqTDipMwRaRh8Ylp-Ga0nBQDmxfsmbDsFx0MQVB7AEdaLhCVJpMNjLJIFLPZjpsJWMJXrDWYekYfZ4gQCYhA-GKabyYUIavxhF5IcIHsU49YhcqQqaHn",
     skills: ["Plumbing", "Pipe Fitting"],
     storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBg7zkswaytLN1_d-fHNy72NSfTpO-aGeEHupIU3eQUs_WOSAzu3_ahcXc8EoWXEnvco9JannJtFqGAGapDvILDrdabUzRG3SY5hvTXg5ce32273DpCRM1FI-rilW_ac-hLr0NmgLpNZ5qZ0gxe5kHnslITR9qtcibTYZJvJA8gSFBJ-x9lWKUIN0VWhZudOT4gAILcyZrkQWEhpk0G0HCfBvNlVr8b4BMY_eeexSR-QryqPTHNdwMUzj7b0OfiRVG11Dwq3UN3KCEv",
     caption: "Completed a 4-hour emergency piping repair! #plumbing"
   },
   {
-    id: "story-priya",
-    name: "Priya S.",
+    id: "story-vikram",
+    name: "Vikram",
+    distance: "1000m away",
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAvqXxQAADDj2gFTjvSLoBQIxqWpnzp3VIMmjq3Xc5RC-f2nZgYlRfy_ZGcSzpFIoC9Zk3Xd5vje8CyhAlKXD-Tnu4sj9ncltqH2-ICD0eI1BNVSrnPYtRvZA3Rx3UleSfdS47y5YJCkrJyQe-5vEaMnWZ10fauggNwqU8kD2YT-xskoZyc7F99Py04dIpVL3umsEmJBtNmIdmrJzWrP3a2Jd4N9YV1RYDjP0D2gc_0YcOXo2379SO3GUsWU01Yp-GHX9zG26YpMHxS",
     skills: ["Interior Design", "Cabinet Setup"],
     storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBOsDiPE0BwAFvSKyForbVSHmxipKzOY56aTjL8VLQiHhSTrQLZUuIuCMzLQsuN2T5B6g6KAO7zYihusaLDbwMRR1YcXtqQmFFOpVwPtsIvLVT3Ml2w9AKBik4zSOnSSRNCWoH1rvYBmMizf8jnmGCtt3LRu-ysDFDWAVDWf-hNC8ycH695Jc7HpfXXVIThexBrdMRDvr57mSlkDq6SNecghdv9MYGfPuuHGSh_A3jDXcf-bsMypsSrsZJsJdtObriec7u_kg4vpObE",
     caption: "Just finished cabinet detailing for a modular kitchen setup."
   },
   {
-    id: "story-arjun-v",
-    name: "Arjun V.",
+    id: "story-ramesh",
+    name: "Ramesh",
+    distance: "1000m away",
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAuBgEepzUFL1dHxuAnDQxyT9n6KbxSSL1iXEmRnl1G3c3coq16LRDRaPEWiTZ7jUUKngxVt_eLNrgRlGHYSmO45Yvxn4xCGlwJS2uk_3CIcqkbC7ngQahcM0luNUHDGuuFOsWYUhewXSuSQqbqUKLkeVw4WY6dJrz6hUGgUvoo3hdnLS3eWJY5LW7vQptVb9GhW7zYRh8deaK9lw4JbiR3QKlgh7ZMZ_UZN0ul2I9QiHkfK9tqyuT9KaZK0cStIuvmGV8R4888n1VP",
     skills: ["Electrical", "Smart Home"],
     storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBEbNAcegiGLZOHO0S3wMLeC-mfyJ_A2DQeZ3YO5R57nGpKDqDLhICSHOPhdTMLWB09sqebMm7J5CU7b_6kQP3A3RTXYtlKEtnTKFWFYwgBw__tmIIj-Ymg-Tt3SykfAP-tz5XLzcssSLMaaRx_xNaJBQZ4pP8TX9flUvLLc1wwxLEQ03UVPqADN7nbCr_tB3R20QWbn2L2LTwOzKV7JuyqgWNhORuE-sqOd2fybXjlubAoWkah_Fbbjb4716OB2JskPAwXiJCIe6dP",
     caption: "Finished wiring up a client's smart home lighting system."
   },
   {
-    id: "story-amit",
-    name: "Amit M.",
+    id: "story-rohan",
+    name: "Rohan",
+    distance: "1000m away",
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCfxb-620UjTlMeQ7Te_kIDAy9XKbI3gnd2l_ivE0Ob98C9x8bY6IPlKER0cEyFNoVNP7bzG9k4FWMRxAbhpgW2PD7EewJ8U8C2vxgTiZ7-titSJvwejWUNdUsasM9LgXzR4OyHVym-H7LLS1QEvkt1jXJXhaAbzG7hhmKmjR7iNrm_avSIXnEiGmhqG1komqjHvZmHVK0Dru_qsj75QL9mcnyCCCfQn6vdLvoCbLp10Tju5oXO4nv-KeRwPYxoxE8jGbGdmQOwk7RI",
     skills: ["HVAC", "AC Repair"],
     storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuCQ9FnPGN3bPHiEpHcKRc3_e7tB8dZTZqqXw9iGk4gddcU1LyopkoDaOaLRdZk4hNeZYjzELS4dQPVgjWhTsXpNjfndE8QxDDJ9IUx2bk40k1WPKzDoBaRY5B8e2mH4pDiFbnFfznYXU939w5Nt9Mu3vdtSk2aTlfAQdVuzc-_dBXI2n6LUjtuCvQx2BnFVoX10ae79j8w047W_8tZ-51C__d8-xTHSViL2R3NRoHhSJobhxUSx2g2ggLq9V-p3HeEsRqeedKIRA3Rz",
     caption: "Industrial chiller diagnosis complete. Ready for summer!"
+  },
+  {
+    id: "story-rajesh",
+    name: "Rajesh",
+    distance: "1000m away",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCzKYMn8fCrhVUQu0SP3raeVyxWRjxeVtPagu3u0L2OKpXOlIuYjcAZBnJzvBA0Hfz9UtPTXwcUFYqgn7wqOoKV9u7A5UU_VCNGjL7EMw_0Bp56QsxYga-K11F7QCtrTYCLcIQeaXE2nXCLRBn26n0BDypS396eFKP57HFXjyNDx0j7WdVzG85km8Cp6284e9v7gx8FJ3yhL40zEjukel5yKs7DBzLcYOLPxSIZtNLf7L17w6s3GLCuxS180aJuLd42knde8pxvpVY9",
+    skills: ["Plumbing", "Fittings"],
+    storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBg7zkswaytLN1_d-fHNy72NSfTpO-aGeEHupIU3eQUs_WOSAzu3_ahcXc8EoWXEnvco9JannJtFqGAGapDvILDrdabUzRG3SY5hvTXg5ce32273DpCRM1FI-rilW_ac-hLr0NmgLpNZ5qZ0gxe5kHnslITR9qtcibTYZJvJA8gSFBJ-x9lWKUIN0VWhZudOT4gAILcyZrkQWEhpk0G0HCfBvNlVr8b4BMY_eeexSR-QryqPTHNdwMUzj7b0OfiRVG11Dwq3UN3KCEv",
+    caption: "Plumbing work complete!"
+  },
+  {
+    id: "story-sunita",
+    name: "Sunita",
+    distance: "1000m away",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuA6NlMpWKAzOcSgyT_4aq8ZtDGbBY6UQEIPbhzAr87rDn5R5H-Ot8Mc580AOeL0K6fvA7KfooGBnwCO4XMRqZ6hTVsfIRJwj2Uga4Gxo_4-N32meZPyLQZ3UWYgoQy79rcD37bqVUQT0VlpQJ7rzlK-56cTAnyy160ANIylHGmH1M09FMsepyiq1hVgs90zCphfC3L_MWuEOh2YSsKaqfw4olAbgEOLc16d_dVOYRQb9nFnD1UGwER3C4pZj8AfJRPWImEA2-YOZfff",
+    skills: ["Kitchen", "Woodwork"],
+    storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBOsDiPE0BwAFvSKyForbVSHmxipKzOY56aTjL8VLQiHhSTrQLZUuIuCMzLQsuN2T5B6g6KAO7zYihusaLDbwMRR1YcXtqQmFFOpVwPtsIvLVT3Ml2w9AKBik4zSOnSSRNCWoH1rvYBmMizf8jnmGCtt3LRu-ysDFDWAVDWf-hNC8ycH695Jc7HpfXXVIThexBrdMRDvr57mSlkDq6SNecghdv9MYGfPuuHGSh_A3jDXcf-bsMypsSrsZJsJdtObriec7u_kg4vpObE",
+    caption: "Modular kitchen setup!"
+  },
+  {
+    id: "story-suresh",
+    name: "Suresh",
+    distance: "1000m away",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuALs8liAJfjbLidgUNfggRcyjgG10awIhtUwcL9DxBr2zUlC7HwrnXxZsZ4DI0Sw3iwBhL7_l0eFfRlJbbtnujlWjuDVaC4nUsPCqeLtsIV0r-7DozqEPZ1yS8M7OSQKSdhJ84gjIwSSqSpL4IZncvslmEwSxfocmAQg_rkTMZMQ4-Xo0K32NBMTI5fWU5NSnbOOSj8umcZZ8qrP6Uqnudg8rdhe9zpZ-ljgvl00yEARctOfhj-AA4BagogufU4etoA3DlWMRmpcsJR",
+    skills: ["Painter", "Polishing"],
+    storyImage: "https://lh3.googleusercontent.com/aida-public/AB6AXuBg7zkswaytLN1_d-fHNy72NSfTpO-aGeEHupIU3eQUs_WOSAzu3_ahcXc8EoWXEnvco9JannJtFqGAGapDvILDrdabUzRG3SY5hvTXg5ce32273DpCRM1FI-rilW_ac-hLr0NmgLpNZ5qZ0gxe5kHnslITR9qtcibTYZJvJA8gSFBJ-x9lWKUIN0VWhZudOT4gAILcyZrkQWEhpk0G0HCfBvNlVr8b4BMY_eeexSR-QryqPTHNdwMUzj7b0OfiRVG11Dwq3UN3KCEv",
+    caption: "Painting job done."
   }
 ];
 
@@ -112,6 +143,24 @@ export const initialJobs = [
 ];
 
 export const initialFeed = [
+  {
+    id: "feed-arjun-new",
+    authorName: "Arjun Sharma",
+    authorTitle: "Electrician Specialist",
+    authorAvatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAtgc7h8rggTMnezzxskuOtxYRC4QZAqZwauVBizXVfiWEh1R0yGLBstfK5ItSthalYnz3GAcidfndxVGyo6LJfp2mj6hQ1XRYucIpc8epp_S046ULBKIk1NjcrU5LeXIckXJa6hmieE2_vOd0jZIoQoHq2xPzhBB_dY7at0bsJ50hzVRb7AvrAzn4c2MjXld0_OV8mevIJTEAxKbZbZ6sKkr1rVbGKAVVSKeCaG_PNi5ChvTUKnT4LiixWDqqbnDgI9FOirq9ArHt",
+    timeAgo: "10m ago",
+    hasPlatinumBadge: true,
+    content: "Successfully finished wiring up a smart automated lighting control panel. Dual circuit backup tested and verified. Proud of the outcome on this project. #Electrician #SmartHome",
+    mediaUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAbbPGIO5t4OAh87xCrW9euQZtLoOt3vU03BRRfzHlX4CALHCVdEtENY4Xq29OMPCLULfR6nQKHnAPsn1kUQNGaos5h7bIW4PHrfDabrV91xkUGXFT8pPdX9pO7vlPhFem1P6owFqsFfJrgveKb3r7T1uL1xPGapcgviRPTfAQ2U8Kr5jlmw01JCPVpvwxB5a_qOAQP6_YlfZCHK90iWy69TRZKZvyqS9vYN0esbuH_pxw3rObkUGWa2ecKYV7o6yMZt7k1Bs2OjbhI",
+    verifiedWork: true,
+    tags: ["Electrician", "Smart Home"],
+    likes: 85,
+    commentsCount: 1,
+    comments: [
+      { author: "Arjun Sharma", text: "Nice finish, very neat workmanship!" }
+    ],
+    liked: false
+  },
   {
     id: "feed-1",
     authorName: "Rajesh Kumar",

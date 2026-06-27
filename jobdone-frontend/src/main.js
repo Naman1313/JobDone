@@ -1,5 +1,10 @@
 import './style.css';
 import { initialStories, initialJobs, initialFeed, initialChats, ArjunProfile } from './data.js';
+import { translations } from './translations.js';
+import { ApiService } from './services/ApiService.js';
+import { ChatService } from './services/ChatService.js';
+import { LocationService } from './services/LocationService.js';
+import { PwaService } from './services/PwaService.js';
 
 // ==========================================
 // STATE MANAGEMENT & LOCAL STORAGE INITIALIZATION
@@ -23,23 +28,209 @@ function setLocalStorage(key, value) {
 
 // App State
 let state = {
-  stories: getLocalStorage('jobdone_stories', initialStories),
-  jobs: getLocalStorage('jobdone_jobs', initialJobs),
-  feed: getLocalStorage('jobdone_feed', initialFeed),
-  chats: getLocalStorage('jobdone_chats', initialChats),
-  profile: getLocalStorage('jobdone_profile', ArjunProfile),
+  stories: getLocalStorage('jobdone_v2_stories', initialStories),
+  jobs: getLocalStorage('jobdone_v2_jobs', initialJobs),
+  feed: getLocalStorage('jobdone_v2_feed', initialFeed),
+  chats: getLocalStorage('jobdone_v2_chats', initialChats),
+  profile: getLocalStorage('jobdone_v2_profile', ArjunProfile),
+  following: getLocalStorage('jobdone_v2_following', []),
   currentView: 'feed',
   activeChatId: null,
   activeStoryIndex: 0,
   storyTimer: null,
-  createPostTags: ['Plumbing', 'Installation'] // In-memory tags for Create Post form
+  createPostTags: ['Plumbing', 'Installation'], // In-memory tags for Create Post form
+  userLocation: null, // Store coords when fetched
+  activeFeedTab: 'all' // all, following, nearby, trade, trending, ai
 };
+
+// Enrich mock data with AI parameters (Coords, Trust Scores, Match %)
+const enrichMockData = () => {
+  const baseLat = 19.0760;
+  const baseLng = 72.8777;
+  
+  state.jobs.forEach(j => {
+    if (!j.lat) j.lat = baseLat + (Math.random() * 0.1 - 0.05);
+    if (!j.lng) j.lng = baseLng + (Math.random() * 0.1 - 0.05);
+    if (!j.matchScore) j.matchScore = Math.floor(Math.random() * 20) + 80; // 80-99%
+    if (!j.trustScore) j.trustScore = Math.floor(Math.random() * 10) + 90; // 90-99
+  });
+  state.feed.forEach(f => {
+    if (!f.lat) f.lat = baseLat + (Math.random() * 0.1 - 0.05);
+    if (!f.lng) f.lng = baseLng + (Math.random() * 0.1 - 0.05);
+    if (!f.authorId) f.authorId = `author-${Math.floor(Math.random()*100)}`; // Assign mock IDs
+    if (!f.matchScore) f.matchScore = Math.floor(Math.random() * 20) + 80;
+    if (!f.trustScore) f.trustScore = Math.floor(Math.random() * 10) + 90;
+  });
+};
+enrichMockData();
 
 // Update and save helpers
 function updateState(key, value) {
   state[key] = value;
-  setLocalStorage(`jobdone_${key}`, value);
+  setLocalStorage(`jobdone_v2_${key}`, value);
 }
+
+// ==========================================
+// THEME & LANGUAGE MANAGERS
+// ==========================================
+const ThemeManager = {
+  theme: getLocalStorage('jobdone_v2_theme', 'system'),
+  accent: getLocalStorage('jobdone_v2_accent', 'blue'),
+  
+  init() {
+    this.applyTheme(this.theme);
+    this.applyAccent(this.accent);
+    
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (this.theme === 'system') {
+        document.documentElement.classList.toggle('dark', e.matches);
+      }
+    });
+  },
+  
+  applyTheme(themeValue) {
+    this.theme = themeValue;
+    setLocalStorage('jobdone_v2_theme', themeValue);
+    
+    if (themeValue === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (themeValue === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', isDark);
+    }
+    
+    document.querySelectorAll('.theme-opt-btn').forEach(btn => {
+      const icon = btn.querySelector('.check-icon');
+      if (icon) {
+        if (btn.dataset.theme === themeValue) {
+          icon.classList.remove('hidden');
+        } else {
+          icon.classList.add('hidden');
+        }
+      }
+    });
+    
+    const themeLabel = document.getElementById('current-theme-label');
+    if (themeLabel && translations[LanguageManager.lang]) {
+      themeLabel.innerText = translations[LanguageManager.lang].dict[`theme.${themeValue}`] || themeValue;
+    }
+  },
+  
+  applyAccent(color) {
+    this.accent = color;
+    setLocalStorage('jobdone_v2_accent', color);
+    
+    if (color === 'blue') {
+      document.documentElement.removeAttribute('data-accent');
+    } else {
+      document.documentElement.setAttribute('data-accent', color);
+    }
+    
+    const indicator = document.getElementById('current-accent-indicator');
+    if (indicator) {
+      indicator.className = indicator.className.replace(/bg-\w+(-\d+)?/g, '');
+      const colorMap = {
+        'blue': 'bg-blue-600',
+        'orange': 'bg-orange-600',
+        'green': 'bg-green-600',
+        'purple': 'bg-purple-600',
+        'red': 'bg-red-600',
+        'yellow': 'bg-yellow-500',
+        'black': 'bg-gray-900'
+      };
+      indicator.classList.add(colorMap[color] || 'bg-blue-600');
+    }
+    
+    // Update checkmarks in accent grid
+    document.querySelectorAll('.accent-opt-btn').forEach(btn => {
+      if(btn.dataset.accent === color) {
+        btn.classList.add('border-primary', 'border-2');
+      } else {
+        btn.classList.remove('border-primary', 'border-2');
+      }
+    });
+  }
+};
+
+const LanguageManager = {
+  lang: getLocalStorage('jobdone_v2_lang', 'en'),
+  
+  init() {
+    this.populateLanguageSheet();
+    this.applyLanguage(this.lang);
+  },
+  
+  applyLanguage(langCode) {
+    if (!translations[langCode]) langCode = 'en';
+    this.lang = langCode;
+    setLocalStorage('jobdone_v2_lang', langCode);
+    
+    const dict = translations[langCode].dict;
+    
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (dict[key]) {
+        if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search')) {
+           el.placeholder = dict[key];
+        } else {
+           el.innerHTML = dict[key];
+        }
+      }
+    });
+    
+    // Also re-apply dynamic labels containing text (e.g., Theme setting label)
+    ThemeManager.applyTheme(ThemeManager.theme);
+    
+    const langLabel = document.getElementById('current-language-label');
+    if (langLabel) {
+      langLabel.innerText = translations[langCode].name;
+    }
+    
+    this.renderLanguageList();
+  },
+
+  populateLanguageSheet() {
+    this.renderLanguageList();
+    const searchInput = document.getElementById('language-search-input');
+    if(searchInput) {
+      searchInput.addEventListener('input', (e) => this.renderLanguageList(e.target.value));
+    }
+  },
+
+  renderLanguageList(filter = '') {
+    const list = document.getElementById('language-list');
+    if (!list) return;
+    list.innerHTML = '';
+    
+    Object.entries(translations).forEach(([code, data]) => {
+      if (filter && !data.name.toLowerCase().includes(filter.toLowerCase()) && !data.nativeName.toLowerCase().includes(filter.toLowerCase())) {
+        return;
+      }
+      
+      const btn = document.createElement('button');
+      btn.className = `w-full py-4 px-md text-left font-semibold text-on-surface hover:bg-surface-container active:bg-surface-container-high rounded-xl transition-colors border border-outline-variant/10 flex justify-between items-center`;
+      
+      const isSelected = this.lang === code;
+      
+      btn.innerHTML = `
+        <div class="flex flex-col">
+          <span class="text-[16px]">${data.nativeName}</span>
+          <span class="text-xs text-secondary font-normal">${data.name}</span>
+        </div>
+        <span class="material-symbols-outlined text-primary ${isSelected ? '' : 'hidden'}">check_circle</span>
+      `;
+      
+      btn.addEventListener('click', () => {
+        this.applyLanguage(code);
+        toggleSheet('language-sheet-container', false);
+      });
+      
+      list.appendChild(btn);
+    });
+  }
+};
 
 // ==========================================
 // TOAST NOTIFICATIONS UTILITY
@@ -139,7 +330,7 @@ function renderFeed() {
         <span class="material-symbols-outlined text-primary text-3xl">add</span>
       </div>
     </div>
-    <span class="text-xs font-semibold text-secondary">Share</span>
+    <span class="text-xs font-semibold text-secondary text-center leading-tight mt-1">Share Work<br/><span class="text-[8px] text-outline opacity-70">Post update</span></span>
   `;
   ownStory.addEventListener('click', () => toggleCreatePostSheet(true));
   storiesContainer.appendChild(ownStory);
@@ -149,12 +340,12 @@ function renderFeed() {
     const card = document.createElement('div');
     card.className = 'flex flex-col items-center flex-shrink-0 gap-1 cursor-pointer';
     card.innerHTML = `
-      <div class="w-[72px] h-[72px] rounded-full p-1 border-2 border-primary flex items-center justify-center bg-white shadow-soft">
-        <div class="w-full h-full rounded-full overflow-hidden bg-surface-container">
+      <div class="w-[72px] h-[72px] rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-soft">
+        <div class="w-full h-full rounded-full overflow-hidden bg-surface-container border-2 border-white dark:border-surface">
           <img alt="${story.name}" class="w-full h-full object-cover" src="${story.avatar}" />
         </div>
       </div>
-      <span class="text-xs font-medium text-secondary truncate max-w-[70px]">${story.name}</span>
+      <span class="text-xs font-medium text-secondary truncate max-w-[70px] leading-tight text-center mt-1">${story.name}<br/><span class="text-[8px] opacity-70">${story.distance || ''}</span></span>
     `;
     card.addEventListener('click', () => openStoryViewer(index));
     storiesContainer.appendChild(card);
@@ -162,7 +353,41 @@ function renderFeed() {
 
   // 2. Render Feed Posts
   feedItems.innerHTML = '';
-  state.feed.forEach(post => {
+  
+  // Filter feed by active tab
+  let filteredFeed = [...state.feed];
+  if (state.activeFeedTab === 'following') {
+    filteredFeed = filteredFeed.filter(p => state.following.includes(p.authorName));
+  } else if (state.activeFeedTab === 'nearby') {
+    filteredFeed = filteredFeed.filter(p => p.distance && parseInt(p.distance) < 10);
+  } else if (state.activeFeedTab === 'ai') {
+    filteredFeed = filteredFeed.filter(p => p.matchScore && p.matchScore >= 90);
+  }
+  
+  // Sort feed by matchScore for AI Recommendation Engine
+  const sortedFeed = filteredFeed.sort((a, b) => {
+    const scoreA = (a.matchScore || 0) + (a.trustScore || 0);
+    const scoreB = (b.matchScore || 0) + (b.trustScore || 0);
+    return scoreB - scoreA;
+  });
+
+  // Bind tab click events
+  document.querySelectorAll('.feed-tab-btn').forEach(btn => {
+    btn.classList.remove('active', 'border-primary', 'text-primary');
+    btn.classList.add('border-transparent', 'text-secondary');
+    
+    if (btn.dataset.tab === state.activeFeedTab) {
+      btn.classList.add('active', 'border-primary', 'text-primary');
+      btn.classList.remove('border-transparent', 'text-secondary');
+    }
+    
+    btn.onclick = (e) => {
+      state.activeFeedTab = e.currentTarget.dataset.tab;
+      renderFeed();
+    };
+  });
+
+  sortedFeed.forEach(post => {
     const article = document.createElement('article');
     article.className = 'animate-slide-up bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,90,180,0.04)] overflow-hidden border border-outline-variant/20';
     
@@ -213,8 +438,20 @@ function renderFeed() {
             <img alt="${post.authorName}" class="w-full h-full object-cover" src="${post.authorAvatar}" />
           </div>
           <div>
-            <h3 class="font-bold text-on-surface text-sm cursor-pointer" id="feed-author-${post.id}">${post.authorName}</h3>
-            <p class="text-xs font-medium text-secondary">${post.authorTitle} • ${post.timeAgo}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-bold text-on-surface text-sm cursor-pointer" id="feed-author-${post.id}">${post.authorName}</h3>
+              ${post.hasPlatinumBadge ? `<span class="flex items-center gap-1 bg-[#E0F7FA]/50 text-[#00838F] px-1.5 py-0.5 rounded-full text-[9px] font-bold border border-[#B2EBF2] uppercase tracking-wider"><span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span> PLATINUM</span>` : ''}
+              ${post.authorName !== state.profile.name ? `
+                <span class="text-secondary/30">•</span>
+                <button class="feed-follow-btn text-primary text-xs font-bold hover:underline transition-colors" data-author="${post.authorName}">
+                  ${state.following.includes(post.authorName) ? 'Following' : 'Follow'}
+                </button>
+              ` : ''}
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <p class="text-xs font-medium text-secondary">${post.authorTitle} • ${post.timeAgo}</p>
+              ${post.matchScore ? `<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">smart_toy</span> ${post.matchScore}% Match</span>` : ''}
+            </div>
           </div>
         </div>
         <button class="feed-more-btn material-symbols-outlined text-secondary hover:text-primary transition-colors">more_vert</button>
@@ -253,6 +490,23 @@ function renderFeed() {
     `;
 
     // Bind event handlers inside post
+    const followBtn = article.querySelector('.feed-follow-btn');
+    if (followBtn) {
+      followBtn.addEventListener('click', () => {
+        const author = followBtn.dataset.author;
+        let newFollowing = [...state.following];
+        if (newFollowing.includes(author)) {
+          newFollowing = newFollowing.filter(f => f !== author);
+          showToast(`Unfollowed ${author}`);
+        } else {
+          newFollowing.push(author);
+          showToast(`Following ${author}`, 'success');
+        }
+        updateState('following', newFollowing);
+        renderFeed();
+      });
+    }
+
     const likeBtn = article.querySelector('.like-btn');
     likeBtn.addEventListener('click', () => toggleLikePost(post.id));
 
@@ -392,28 +646,88 @@ function openStoryViewer(index) {
   // Trigger messaging from story
   msgBtn.onclick = () => {
     closeStoryViewer();
-    openDirectChat(story.name, story.avatar, story.skills.join(' • '));
+    const targetNameEl = document.getElementById('hire-target-name');
+    if (targetNameEl) targetNameEl.innerText = story.name;
+    if (window.toggleSheet) {
+      window.toggleSheet('hire-me-modal-container', true);
+    } else {
+      const sheet = document.getElementById('hire-me-modal-container');
+      if (sheet) sheet.classList.remove('hidden');
+    }
   };
+
+  const likeBtn = document.getElementById('story-viewer-like-btn');
+  if (likeBtn) {
+    likeBtn.onclick = () => {
+      showToast("Story Liked!", "success");
+      const icon = likeBtn.querySelector('.material-symbols-outlined');
+      if (icon) {
+        icon.style.fontVariationSettings = "'FILL' 1";
+        icon.classList.add('text-red-500');
+      }
+    };
+  }
 
   // Start progress bar
   if (state.storyTimer) clearInterval(state.storyTimer);
   let percent = 0;
   progress.style.width = '0%';
   
-  state.storyTimer = setInterval(() => {
-    percent += 2;
-    progress.style.width = `${percent}%`;
-    
-    if (percent >= 100) {
-      clearInterval(state.storyTimer);
-      // Auto advance or close
-      if (state.activeStoryIndex + 1 < state.stories.length) {
-        openStoryViewer(state.activeStoryIndex + 1);
-      } else {
-        closeStoryViewer();
+  const startStoryTimer = () => {
+    if (state.storyTimer) clearInterval(state.storyTimer);
+    state.storyTimer = setInterval(() => {
+      percent += 2;
+      progress.style.width = `${percent}%`;
+      
+      if (percent >= 100) {
+        clearInterval(state.storyTimer);
+        if (state.activeStoryIndex + 1 < state.stories.length) {
+          openStoryViewer(state.activeStoryIndex + 1);
+        } else {
+          closeStoryViewer();
+        }
       }
+    }, 100);
+  };
+  
+  startStoryTimer();
+
+  // Play/Pause on hold
+  const pauseStory = () => clearInterval(state.storyTimer);
+  const resumeStory = () => startStoryTimer();
+  img.onmousedown = pauseStory;
+  img.onmouseup = resumeStory;
+  img.ontouchstart = pauseStory;
+  img.ontouchend = resumeStory;
+
+  // Swipe-down-to-close gestures
+  let startY = 0;
+  let currentY = 0;
+  
+  modal.ontouchstart = (e) => {
+    startY = e.touches[0].clientY;
+  };
+  
+  modal.ontouchmove = (e) => {
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    if (diff > 30) {
+      modal.style.transform = `translateY(${diff}px)`;
+      modal.style.transition = 'none';
     }
-  }, 100); // 5 seconds story duration
+  };
+  
+  modal.ontouchend = () => {
+    const diff = currentY - startY;
+    modal.style.transform = '';
+    modal.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    if (diff > 120) {
+      closeStoryViewer();
+    }
+    // reset
+    startY = 0;
+    currentY = 0;
+  };
 }
 
 function closeStoryViewer() {
@@ -440,11 +754,28 @@ function renderJobs() {
   jobsList.innerHTML = '';
   
   // Filter jobs
-  const filteredJobs = state.jobs.filter(job => {
+  let filteredJobs = state.jobs.filter(job => {
     const matchesCategory = jobsCategoryFilter === 'all' || job.category.toLowerCase() === jobsCategoryFilter.toLowerCase();
     const matchesSearch = job.title.toLowerCase().includes(searchQuery) || job.company.toLowerCase().includes(searchQuery) || job.description.toLowerCase().includes(searchQuery);
     return matchesCategory && matchesSearch;
   });
+
+  // Sort by AI Match Score and Trust Score
+  filteredJobs.sort((a, b) => {
+    const scoreA = (a.matchScore || 0) + (a.trustScore || 0);
+    const scoreB = (b.matchScore || 0) + (b.trustScore || 0);
+    return scoreB - scoreA;
+  });
+
+  if (filteredJobs.length > 0 && searchQuery === '') {
+    const aiHeader = document.createElement('div');
+    aiHeader.className = 'flex items-center gap-2 mb-2 px-1';
+    aiHeader.innerHTML = `
+      <span class="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
+      <span class="text-sm font-bold text-on-surface">Top Matches for You</span>
+    `;
+    jobsList.appendChild(aiHeader);
+  }
 
   if (filteredJobs.length === 0) {
     jobsList.innerHTML = `
@@ -468,7 +799,10 @@ function renderJobs() {
             <img class="w-full h-full object-cover" src="${job.companyLogo}" />
           </div>
           <div>
-            <h3 class="font-bold text-headline-md text-on-surface leading-snug">${job.title}</h3>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-headline-md text-on-surface leading-snug">${job.title}</h3>
+              ${job.matchScore ? `<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 border border-primary/20"><span class="material-symbols-outlined text-[10px]">smart_toy</span> ${job.matchScore}% Match</span>` : ''}
+            </div>
             <div class="flex items-center gap-1 mt-0.5">
               <span class="text-sm font-medium text-secondary">${job.company}</span>
               ${job.verified ? `
@@ -490,7 +824,22 @@ function renderJobs() {
           <span class="material-symbols-outlined text-[16px] text-secondary">schedule</span>
           <span class="text-xs text-secondary font-medium">${job.type}</span>
         </div>
+        ${job.distance ? `
+        <div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/10">
+          <span class="material-symbols-outlined text-[16px] text-secondary">explore</span>
+          <span class="text-xs text-secondary font-medium">${job.distance}km away</span>
+        </div>
+        ` : ''}
       </div>
+      
+      ${job.matchScore >= 90 ? `
+      <div class="bg-primary/5 rounded p-2 mb-3 border border-primary/10">
+        <p class="text-[10px] text-primary font-medium flex items-start gap-1 leading-snug">
+          <span class="material-symbols-outlined text-[12px] shrink-0 pt-0.5">auto_awesome</span>
+          <span>AI Pick: ${job.matchReason || 'Strong match based on your skills, location, and past performance rating.'}</span>
+        </p>
+      </div>
+      ` : ''}
       
       <div class="flex justify-between items-center pt-md border-t border-outline-variant/20">
         <div class="flex flex-col">
@@ -1361,8 +1710,253 @@ function triggerChatSearch() {
 
 
 // ==========================================
+// AI ASSISTANT, VOICE & LOCATION SYSTEMS
+// ==========================================
+const AIAssistant = {
+  isListening: false,
+  recognition: null,
+  
+  init() {
+    if ('webkitSpeechRecognition' in window) {
+      this.recognition = new webkitSpeechRecognition();
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      
+      this.recognition.onstart = () => {
+        this.isListening = true;
+        document.getElementById('feed-mic-btn')?.classList.add('text-red-500', 'animate-pulse');
+        document.getElementById('ai-voice-input-btn')?.classList.add('text-red-500', 'animate-pulse');
+      };
+      
+      this.recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        if (document.getElementById('ai-assistant-container').classList.contains('hidden')) {
+          document.getElementById('feed-search-input').value = text;
+          this.parseIntent(text);
+        } else {
+          document.getElementById('ai-chat-input').value = text;
+          this.handleChatSubmit(text);
+        }
+      };
+      
+      this.recognition.onend = () => {
+        this.isListening = false;
+        document.getElementById('feed-mic-btn')?.classList.remove('text-red-500', 'animate-pulse');
+        document.getElementById('ai-voice-input-btn')?.classList.remove('text-red-500', 'animate-pulse');
+      };
+    }
+  },
+  
+  startVoiceSearch() {
+    if (!this.recognition) {
+      showToast("Voice search not supported in this browser", "error");
+      return;
+    }
+    if (this.isListening) {
+      this.recognition.stop();
+    } else {
+      this.recognition.start();
+    }
+  },
+  
+  parseIntent(text) {
+    const query = text.toLowerCase();
+    showToast("AI is analyzing your request...", "info");
+    
+    setTimeout(() => {
+      if (query.includes('job') || query.includes('work') || query.includes('hire')) {
+        switchView('jobs');
+        document.getElementById('jobs-search-input').value = text;
+        renderJobs();
+      } else if (query.includes('plumb') || query.includes('electric') || query.includes('repair')) {
+        switchView('jobs');
+        document.getElementById('jobs-search-input').value = text;
+        renderJobs();
+      } else {
+        document.getElementById('feed-search-input').value = text;
+        showToast("Search applied to feed!");
+      }
+    }, 1000);
+  },
+  
+  appendMessage(text, isUser = false) {
+    const history = document.getElementById('ai-chat-history');
+    if (!history) return;
+    
+    const div = document.createElement('div');
+    if (isUser) {
+      div.className = 'self-end max-w-[85%] bg-primary text-white rounded-2xl rounded-tr-sm p-3 shadow-sm';
+    } else {
+      div.className = 'self-start max-w-[85%] bg-surface-container rounded-2xl rounded-tl-sm p-3 shadow-sm border border-outline-variant/10 flex gap-2';
+    }
+    
+    div.innerHTML = `<p class="text-sm leading-relaxed">${text}</p>`;
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+  },
+  
+  showTyping() {
+    const history = document.getElementById('ai-chat-history');
+    const div = document.createElement('div');
+    div.id = 'ai-typing-indicator';
+    div.className = 'self-start max-w-[85%] bg-surface-container rounded-2xl rounded-tl-sm p-4 shadow-sm border border-outline-variant/10 flex gap-1 items-center mt-2';
+    div.innerHTML = `
+      <div class="w-1.5 h-1.5 bg-secondary rounded-full typing-dot"></div>
+      <div class="w-1.5 h-1.5 bg-secondary rounded-full typing-dot"></div>
+      <div class="w-1.5 h-1.5 bg-secondary rounded-full typing-dot"></div>
+    `;
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+  },
+  
+  hideTyping() {
+    const indicator = document.getElementById('ai-typing-indicator');
+    if (indicator) indicator.remove();
+  },
+  
+  handleChatSubmit(text) {
+    if (!text.trim()) return;
+    
+    this.appendMessage(text, true);
+    document.getElementById('ai-chat-input').value = '';
+    this.showTyping();
+    
+    setTimeout(() => {
+      this.hideTyping();
+      const query = text.toLowerCase();
+      let response = "I found some great options for you. Let me know what you want to do next!";
+      
+      if (query.includes('electrician') || query.includes('plumb')) {
+        response = "I see you're looking for a specialist. I've filtered the Jobs section for you.";
+        setTimeout(() => {
+          toggleSheet('ai-assistant-container', false);
+          switchView('jobs');
+          document.getElementById('jobs-search-input').value = query;
+          renderJobs();
+        }, 3000);
+      } else if (query.includes('theme') || query.includes('dark')) {
+        response = "Sure, I can open the theme settings for you.";
+        setTimeout(() => {
+          toggleSheet('ai-assistant-container', false);
+          toggleSheet('theme-sheet-container', true);
+        }, 2000);
+      }
+      
+      this.appendMessage(response, false);
+    }, 1500);
+  }
+};
+
+const LocationManager = {
+  requestLocation() {
+    if (navigator.geolocation) {
+      showToast("Fetching location...", "info");
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          updateState('userLocation', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          showToast("Location updated! Distance tracking enabled.", "success");
+          renderFeed();
+          renderJobs();
+        },
+        (error) => {
+          showToast("Location access denied or unavailable", "error");
+        }
+      );
+    }
+  }
+};
+
+// Start mock smart notifications
+setInterval(() => {
+  if (Math.random() > 0.7) {
+    showToast("AI picked a new recommended job for you!", "info");
+    document.getElementById('notif-badge')?.classList.remove('hidden');
+  }
+}, 30000);
+
+// ==========================================
 // EVENT LISTENERS BINDINGS & APP STARTUP
 // ==========================================
+// ==========================================
+// AI & VOICE INTEGRATION
+// ==========================================
+const VoiceAssistant = {
+  recognition: null,
+  isRecording: false,
+
+  init() {
+    if ('webkitSpeechRecognition' in window) {
+      this.recognition = new window.webkitSpeechRecognition();
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.lang = 'en-US';
+
+      this.recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        this.handleIntent(transcript);
+      };
+
+      this.recognition.onerror = (event) => {
+        console.error("[AIAssistant] Speech Recognition Error:", event.error);
+        showToast("Voice search failed. Try again.", "error");
+        this.stopRecording();
+      };
+
+      this.recognition.onend = () => this.stopRecording();
+    }
+  },
+
+  startRecording() {
+    if (this.recognition && !this.isRecording) {
+      try {
+        this.recognition.start();
+        this.isRecording = true;
+        showToast("Listening...", "info");
+      } catch (e) {
+        console.error(e);
+      }
+    } else if (!this.recognition) {
+      showToast("Voice search not supported in this browser.", "error");
+    }
+  },
+
+  stopRecording() {
+    if (this.recognition && this.isRecording) {
+      this.recognition.stop();
+      this.isRecording = false;
+    }
+  },
+
+  handleIntent(query) {
+    const q = query.toLowerCase();
+    showToast(`You said: "${query}"`, "success");
+
+    // Intent Parser
+    if (q.includes('electrician') || q.includes('plumber') || q.includes('carpenter') || q.includes('job') || q.includes('work')) {
+      // Auto Navigation to Jobs
+      switchView('jobs');
+      const searchInput = document.getElementById('jobs-search-input');
+      if (searchInput) {
+        searchInput.value = query;
+        // Trigger generic job filter if available
+        showToast(`AI routed you to Jobs for: ${query}`, "info");
+      }
+    } else if (q.includes('rate') || q.includes('high') || q.includes('best')) {
+      state.activeFeedTab = 'ai';
+      switchView('feed');
+      showToast(`AI sorted feed for best recommendations`, "info");
+    } else {
+      // Default to feed search
+      switchView('feed');
+      const feedSearch = document.getElementById('feed-search-input');
+      if (feedSearch) feedSearch.value = query;
+    }
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   
   // 1. Navigation Tab Clicks
@@ -1372,6 +1966,56 @@ document.addEventListener('DOMContentLoaded', () => {
       switchView(view);
     });
   });
+
+  // AI & New Header Bindings
+  AIAssistant.init();
+  
+  const aiBtn = document.getElementById('feed-ai-btn');
+  if (aiBtn) aiBtn.addEventListener('click', () => toggleSheet('ai-assistant-container', true));
+  
+  const micBtn = document.getElementById('feed-mic-btn');
+  if (micBtn) micBtn.addEventListener('click', () => AIAssistant.startVoiceSearch());
+  
+  const locBtn = document.getElementById('feed-location-btn');
+  if (locBtn) locBtn.addEventListener('click', () => LocationManager.requestLocation());
+  
+  const aiSendBtn = document.getElementById('ai-send-btn');
+  const aiVoiceBtn = document.getElementById('ai-voice-input-btn');
+  const aiInput = document.getElementById('ai-chat-input');
+  
+  if (aiInput) {
+    aiInput.addEventListener('input', () => {
+      if (aiInput.value.trim().length > 0) {
+        aiSendBtn.classList.remove('hidden');
+        aiVoiceBtn.classList.add('hidden');
+      } else {
+        aiSendBtn.classList.add('hidden');
+        aiVoiceBtn.classList.remove('hidden');
+      }
+    });
+    aiInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        AIAssistant.handleChatSubmit(aiInput.value);
+        aiSendBtn.classList.add('hidden');
+        aiVoiceBtn.classList.remove('hidden');
+      }
+    });
+  }
+  
+  if (aiSendBtn) aiSendBtn.addEventListener('click', () => {
+    AIAssistant.handleChatSubmit(aiInput.value);
+    aiSendBtn.classList.add('hidden');
+    aiVoiceBtn.classList.remove('hidden');
+  });
+  if (aiVoiceBtn) aiVoiceBtn.addEventListener('click', () => AIAssistant.startVoiceSearch());
+  
+  document.querySelectorAll('.ai-suggestion-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => AIAssistant.handleChatSubmit(e.target.innerText));
+  });
+
+  document.getElementById('ai-close-btn')?.addEventListener('click', () => toggleSheet('ai-assistant-container', false));
+  document.getElementById('ai-backdrop')?.addEventListener('click', () => toggleSheet('ai-assistant-container', false));
+
 
   // 2. Center "Create" button click (open bottom sheet)
   const tabCreate = document.getElementById('tab-create');
@@ -1653,10 +2297,134 @@ document.addEventListener('DOMContentLoaded', () => {
   const profileSettingsBtn = document.getElementById('profile-settings-btn');
   if (profileSettingsBtn) {
     profileSettingsBtn.addEventListener('click', () => {
-      showToast("Profile Settings under development", "info");
+      switchView('settings');
     });
   }
 
+  // 16. Settings View Action bindings
+  const settingsBackBtn = document.getElementById('settings-back-btn');
+  if (settingsBackBtn) {
+    settingsBackBtn.addEventListener('click', () => switchView('profile'));
+  }
+
+  // Helper for bottom sheets
+  window.toggleSheet = function(sheetId, show) {
+    const sheet = document.getElementById(sheetId);
+    if (!sheet) return;
+    if (show) {
+      sheet.classList.remove('hidden');
+    } else {
+      sheet.classList.add('hidden');
+    }
+  };
+
+  const bindSheetClose = (sheetId, closeBtnId, backdropId, handleId) => {
+    [closeBtnId, backdropId, handleId].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', () => toggleSheet(sheetId, false));
+    });
+  };
+
+  bindSheetClose('language-sheet-container', 'language-close-btn', 'language-backdrop', 'language-close-handle');
+  bindSheetClose('theme-sheet-container', 'theme-close-btn', 'theme-backdrop', 'theme-close-handle');
+  bindSheetClose('accent-sheet-container', 'accent-close-btn', 'accent-backdrop', 'accent-close-handle');
+
+  const langBtn = document.getElementById('settings-lang-btn');
+  if (langBtn) langBtn.addEventListener('click', () => toggleSheet('language-sheet-container', true));
+
+  const themeBtn = document.getElementById('settings-theme-btn');
+  if (themeBtn) themeBtn.addEventListener('click', () => toggleSheet('theme-sheet-container', true));
+  
+  document.querySelectorAll('.theme-opt-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const themeVal = e.currentTarget.dataset.theme;
+      if (themeVal) {
+        ThemeManager.applyTheme(themeVal);
+        setTimeout(() => toggleSheet('theme-sheet-container', false), 200);
+      }
+    });
+  });
+
+  const accentBtn = document.getElementById('settings-accent-btn');
+  if (accentBtn) {
+    accentBtn.addEventListener('click', () => {
+      // Build accent grid if not built
+      const grid = document.getElementById('accent-color-grid');
+      if (grid && grid.children.length === 0) {
+        const colors = [
+          {id: 'orange', hex: '#e65100'},
+          {id: 'blue', hex: '#005ab4'},
+          {id: 'green', hex: '#2e7d32'},
+          {id: 'purple', hex: '#6a1b9a'},
+          {id: 'red', hex: '#c62828'},
+          {id: 'yellow', hex: '#f57f17'},
+          {id: 'pink', hex: '#d81b60'},
+          {id: 'black', hex: '#212121'}
+        ];
+        
+        colors.forEach(c => {
+          const cBtn = document.createElement('button');
+          cBtn.className = `accent-opt-btn w-12 h-12 rounded-full mx-auto flex items-center justify-center transition-transform active:scale-90`;
+          cBtn.style.backgroundColor = c.hex;
+          cBtn.dataset.accent = c.id;
+          if (c.id === ThemeManager.accent) {
+            cBtn.classList.add('border-primary', 'border-2');
+          }
+          cBtn.addEventListener('click', () => {
+            ThemeManager.applyAccent(c.id);
+            setTimeout(() => toggleSheet('accent-sheet-container', false), 200);
+          });
+          grid.appendChild(cBtn);
+        });
+      }
+      toggleSheet('accent-sheet-container', true);
+    });
+  }
+
+  // Smart Notifications Generator
+  const simulateSmartNotifications = () => {
+    setInterval(() => {
+      const isJob = Math.random() > 0.5;
+      if (isJob && state.jobs.length > 0) {
+        const job = state.jobs[Math.floor(Math.random() * state.jobs.length)];
+        showToast(`AI Match: ${job.title} at ${job.company} matches your skills!`, 'info');
+      } else if (state.feed.length > 0) {
+        const post = state.feed[Math.floor(Math.random() * state.feed.length)];
+        showToast(`Trending: ${post.authorName} just posted in your area!`, 'info');
+      }
+    }, 45000); // every 45 seconds
+  };
+
   // Initialize and launch app
+  ThemeManager.init();
+  LanguageManager.init();
+  VoiceAssistant.init();
+  PwaService.register();
+  
+  // Bind Header actions
+  const feedMicBtn = document.getElementById('feed-mic-btn');
+  if (feedMicBtn) {
+    feedMicBtn.addEventListener('click', () => {
+      VoiceAssistant.startRecording();
+    });
+  }
+
+  const feedLocationBtn = document.getElementById('feed-location-btn');
+  if (feedLocationBtn) {
+    feedLocationBtn.addEventListener('click', () => {
+      LocationService.requestLocation(
+        (coords) => {
+          state.userLocation = coords;
+          showToast("Location updated successfully", "success");
+          // Re-sort feed based on distance if needed
+          state.activeFeedTab = 'nearby';
+          renderFeed();
+        },
+        () => showToast("Could not determine location", "error")
+      );
+    });
+  }
+
   switchView('feed');
+  simulateSmartNotifications();
 });
