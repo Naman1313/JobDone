@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+  <title>JobDone Social Hiring Platform</title>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-surface text-on-surface font-body-md select-none overflow-x-hidden min-h-screen pb-safe">
+
+  <!-- ================= APP CONTAINER ================= -->
+  <div id="app" class="max-w-2xl mx-auto min-h-screen relative flex flex-col">
+    
+    <!-- ================= 1. FEED VIEW ================= -->
+    <div id="view-feed" class="app-view flex-1 pb-24">
+      <!-- Feed Top App Bar -->
+      <header class="fixed top-0 w-full max-w-2xl z-40 backdrop-blur-xl bg-white/80 dark:bg-inverse-surface/80 border-b border-outline-variant/10 shadow-[0px_4px_20px_rgba(0,90,180,0.03)]">
+        <div class="flex justify-between items-center px-md h-16 w-full">
+          <button id="feed-search-btn" class="material-symbols-outlined text-primary hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200">
+            search
+          </button>
+          <h1 class="font-display-lg text-2xl font-extrabold text-primary dark:text-primary-fixed-dim tracking-tight">JobDone</h1>
+          <button id="feed-notif-btn" class="material-symbols-outlined text-primary hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200" title="Notifications">
+            notifications
+          </button>
+        </div>
+      </header>
+
+      <main class="pt-20">
+        <!-- Skill Spotlights (Stories) -->
+        <section class="mb-lg">
+          <div class="flex items-center px-md mb-3">
+            <h2 class="font-label-lg text-label-sm text-secondary uppercase tracking-wider font-semibold">Skill Spotlights</h2>
+          </div>
+          <div id="stories-container" class="flex overflow-x-auto px-md gap-4 hide-scrollbar pb-xs">
+            <!-- Dynamic Stories Inject Here -->
+          </div>
+        </section>
+
+        <!-- Main Feed Items -->
+        <div id="feed-items" class="space-y-6 px-md">
+          <!-- Dynamic Feed Posts Inject Here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- ================= 2. JOBS VIEW ================= -->
+    <div id="view-jobs" class="app-view flex-1 pb-24 hidden">
+      <!-- Jobs Top App Bar -->
+      <header class="fixed top-0 w-full max-w-2xl z-40 backdrop-blur-xl bg-white/80 dark:bg-inverse-surface/80 border-b border-outline-variant/10 shadow-[0px_4px_20px_rgba(0,90,180,0.03)]">
+        <div class="flex flex-col px-md py-xs gap-xs">
+          <div class="flex justify-between items-center h-12">
+            <h1 class="font-display-lg text-2xl font-extrabold text-primary dark:text-primary-fixed-dim tracking-tight">JobDone</h1>
+            <div class="flex gap-md">
+              <button id="jobs-notif-btn" class="p-2 rounded-full hover:bg-surface-variant/50 transition-colors active:scale-95 duration-200" title="Notifications">
+                <span class="material-symbols-outlined text-secondary">notifications</span>
+              </button>
+              <button id="jobs-profile-btn" class="p-2 rounded-full hover:bg-surface-variant/50 transition-colors active:scale-95 duration-200">
+                <span class="material-symbols-outlined text-secondary">account_circle</span>
+              </button>
+            </div>
+          </div>
+          <!-- Search Bar -->
+          <div class="relative w-full mb-2">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
+            <input id="jobs-search-input" class="w-full bg-surface-container-low border-none rounded-xl py-3 pl-11 pr-4 font-body-md text-body-md focus:ring-2 focus:ring-primary/20 placeholder:text-secondary/50 outline-none" placeholder="Find Work" type="text" />
+          </div>
+        </div>
+      </header>
+
+      <main class="mt-40 px-md">
+        <!-- Filter Chips Section -->
+        <section class="mb-lg">
+          <div id="filter-chips-container" class="flex gap-xs overflow-x-auto hide-scrollbar -mx-md px-md">
+            <button class="filter-chip px-md py-2 bg-primary text-on-primary rounded-full font-label-sm text-label-sm whitespace-nowrap active:scale-95 transition-transform" data-category="all">All Jobs</button>
+            <button class="filter-chip px-md py-2 bg-surface-container text-secondary rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-colors" data-category="Construction">Construction</button>
+            <button class="filter-chip px-md py-2 bg-surface-container text-secondary rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-colors" data-category="Electrical">Electrical</button>
+            <button class="filter-chip px-md py-2 bg-surface-container text-secondary rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-colors" data-category="Plumbing">Plumbing</button>
+            <button class="filter-chip px-md py-2 bg-surface-container text-secondary rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-colors" data-category="Warehouse">Warehouse</button>
+            <button class="filter-chip px-md py-2 bg-surface-container text-secondary rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-colors" data-category="Delivery">Delivery</button>
+          </div>
+        </section>
+
+        <!-- Job Cards List -->
+        <div id="jobs-list" class="space-y-md">
+          <!-- Dynamic Job Cards Inject Here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- ================= 3. MESSAGES VIEW ================= -->
+    <div id="view-messages" class="app-view flex-1 pb-24 hidden">
+      <!-- Messages Top App Bar -->
+      <header class="fixed top-0 w-full max-w-2xl z-40 backdrop-blur-xl bg-white/80 dark:bg-inverse-surface/80 border-b border-outline-variant/10 shadow-[0px_4px_20px_rgba(0,90,180,0.03)]">
+        <div class="flex justify-between items-center px-md h-16 w-full">
+          <button id="msg-search-btn" class="material-symbols-outlined text-primary hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200" title="Search Chats">
+            search
+          </button>
+          <h1 class="font-display-lg text-xl font-bold text-on-surface">Messages</h1>
+          <button id="msg-new-btn" class="material-symbols-outlined text-primary hover:bg-surface-variant/50 transition-colors p-2 rounded-full active:scale-95 duration-200" title="New Message">
+            edit_square
+          </button>
+        </div>
+      </header>
+
+      <main class="pt-20 px-md">
+        <div id="chats-list-container" class="divide-y divide-outline-variant/20">
+          <!-- Dynamic Chat List Items Inject Here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- ================= 4. PROFILE VIEW ================= -->
+    <div id="view-profile" class="app-view flex-1 pb-24 hidden">
+      <!-- Profile Top App Bar -->
+      <header class="fixed top-0 w-full max-w-2xl z-40 backdrop-blur-xl bg-white/80 dark:bg-inverse-surface/80 shadow-[0px_4px_20px_rgba(0,93,184,0.03)] flex justify-between items-center px-md h-16">
+        <div class="flex items-center gap-xs">
+          <button id="profile-back-btn" class="p-xs hover:bg-surface-variant/50 rounded-full transition-colors active:scale-95 transition-transform duration-200">
+            <span class="material-symbols-outlined text-primary">arrow_back</span>
+          </button>
+          <h1 class="font-display text-[20px] text-primary dark:text-primary-fixed-dim font-bold">Worker Profile</h1>
+        </div>
+        <div class="flex items-center gap-xs">
+          <button id="profile-edit-btn" class="p-xs hover:bg-surface-variant/50 rounded-full transition-colors active:scale-95 transition-transform duration-200" title="Edit Profile">
+            <span class="material-symbols-outlined text-secondary">edit</span>
+          </button>
+          <button id="profile-share-btn" class="p-xs hover:bg-surface-variant/50 rounded-full transition-colors active:scale-95 transition-transform duration-200" title="Share Profile">
+            <span class="material-symbols-outlined text-secondary">share</span>
+          </button>
+          <button id="profile-settings-btn" class="p-xs hover:bg-surface-variant/50 rounded-full transition-colors active:scale-95 transition-transform duration-200" title="Profile Settings">
+            <span class="material-symbols-outlined text-secondary">more_vert</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="pt-20 px-md pb-lg">
+        <!-- Profile Header -->
+        <header class="flex flex-col items-center text-center">
+          <div id="profile-avatar-container" class="relative group cursor-pointer" title="Click to change photo">
+            <div class="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden relative">
+              <img id="profile-avatar" alt="Professional portrait" class="w-full h-full object-cover" src="" />
+              <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <span class="material-symbols-outlined text-white text-[28px]">photo_camera</span>
+              </div>
+            </div>
+            <input type="file" id="profile-avatar-input" accept="image/*" class="hidden" />
+            <div class="absolute bottom-0 right-0 bg-primary text-white p-1 rounded-full border-2 border-white flex items-center justify-center">
+              <span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+            </div>
+          </div>
+          <h2 id="profile-name" class="mt-md font-headline text-2xl font-bold text-on-background">Arjun Sharma</h2>
+          <div class="flex items-center justify-center gap-xs mt-xs">
+            <span id="profile-role" class="bg-secondary-container text-on-secondary-container px-xs py-1 rounded-full text-[11px] font-semibold flex items-center gap-1">
+              Verified Worker
+            </span>
+            <div class="flex items-center text-primary">
+              <span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+              <span id="profile-rating" class="ml-1 text-label-lg font-bold">4.9</span>
+              <span id="profile-reviews" class="ml-1 text-secondary text-label-sm font-normal">(124 reviews)</span>
+            </div>
+          </div>
+          <p id="profile-bio" class="mt-sm text-on-surface-variant text-body-md max-w-[85%]">Professional Electrician & Smart Home Specialist with 8+ years of expertise in industrial and residential projects.</p>
+        </header>
+
+        <!-- Stats Row -->
+        <section class="mt-lg grid grid-cols-3 gap-xs bg-white p-md rounded-xl shadow-[0px_4px_20px_rgba(0,93,184,0.05)]">
+          <div class="text-center">
+            <p id="profile-jobs-done" class="font-headline text-headline-md text-primary font-bold text-lg">450+</p>
+            <p class="text-xs text-secondary">Jobs Done</p>
+          </div>
+          <div class="text-center border-x border-outline-variant/30">
+            <p id="profile-connections" class="font-headline text-headline-md text-primary font-bold text-lg">1.2k</p>
+            <p class="text-xs text-secondary">Connections</p>
+          </div>
+          <div class="text-center">
+            <p id="profile-endorsements" class="font-headline text-headline-md text-primary font-bold text-lg">82</p>
+            <p class="text-xs text-secondary">Endorsements</p>
+          </div>
+        </section>
+
+        <!-- Action Buttons -->
+        <section class="mt-lg grid grid-cols-2 gap-md">
+          <button id="profile-hire-btn" class="bg-primary text-white py-3 rounded-lg font-semibold text-label-lg shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+            Hire Me
+          </button>
+          <button id="profile-msg-btn" class="border-[1.5px] border-primary text-primary py-3 rounded-lg font-semibold text-label-lg hover:bg-primary/5 active:scale-95 transition-transform flex items-center justify-center gap-xs">
+            <span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+            Message
+          </button>
+        </section>
+
+        <!-- Skills Section -->
+        <section class="mt-xl">
+          <h3 class="font-headline text-headline-md text-on-background font-semibold mb-md">Skills</h3>
+          <div id="profile-skills-container" class="flex flex-wrap gap-xs">
+            <!-- Dynamic Skills Inject Here -->
+          </div>
+        </section>
+
+        <!-- Portfolio Grid -->
+        <section class="mt-xl mb-12">
+          <div class="flex items-center justify-between mb-md">
+            <h3 class="font-headline text-headline-md text-on-background font-semibold">Portfolio</h3>
+            <button class="text-primary text-label-lg font-semibold hover:opacity-80 transition-opacity">View All</button>
+          </div>
+          <div id="profile-portfolio-container" class="grid grid-cols-2 gap-md">
+            <!-- Dynamic Portfolio Items Inject Here -->
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ================= GLOBAL BOTTOM NAV BAR ================= -->
+    <nav class="fixed bottom-0 w-full max-w-2xl z-40 h-[72px] backdrop-blur-xl bg-white/80 border-t border-outline-variant/20 shadow-[0px_-4px_20px_rgba(0,90,180,0.05)]">
+      <div class="flex justify-around items-center px-md h-full pb-safe">
+        <!-- Tab Feed -->
+        <button id="tab-feed" class="nav-tab flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim relative transition-transform duration-200 active:scale-90" data-view="feed">
+          <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dynamic_feed</span>
+          <span class="font-label-sm text-xs font-medium">Feed</span>
+          <div class="nav-indicator absolute -bottom-1.5 w-1 h-1 bg-primary rounded-full"></div>
+        </button>
+        
+        <!-- Tab Jobs -->
+        <button id="tab-jobs" class="nav-tab flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim relative transition-transform duration-200 active:scale-90" data-view="jobs">
+          <span class="material-symbols-outlined">work</span>
+          <span class="font-label-sm text-xs font-medium">Jobs</span>
+          <div class="nav-indicator absolute -bottom-1.5 w-1 h-1 bg-primary rounded-full hidden"></div>
+        </button>
+
+        <!-- Tab Create (Triggers modal bottom-sheet, doesn't switch view) -->
+        <button id="tab-create" class="flex flex-col items-center justify-center text-primary-container transition-transform duration-200 active:scale-90">
+          <span class="material-symbols-outlined text-[42px] text-primary">add_circle</span>
+        </button>
+
+        <!-- Tab Messages -->
+        <button id="tab-messages" class="nav-tab flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim relative transition-transform duration-200 active:scale-90" data-view="messages">
+          <span class="material-symbols-outlined">chat_bubble</span>
+          <span class="font-label-sm text-xs font-medium">Messages</span>
+          <div class="nav-indicator absolute -bottom-1.5 w-1 h-1 bg-primary rounded-full hidden"></div>
+        </button>
+
+        <!-- Tab Profile -->
+        <button id="tab-profile" class="nav-tab flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim relative transition-transform duration-200 active:scale-90" data-view="profile">
+          <span class="material-symbols-outlined">account_circle</span>
+          <span class="font-label-sm text-xs font-medium">Profile</span>
+          <div class="nav-indicator absolute -bottom-1.5 w-1 h-1 bg-primary rounded-full hidden"></div>
+        </button>
+      </div>
+    </nav>
+
+  </div> <!-- End #app -->
+
+
+  <!-- ======================= OVERLAYS & MODALS ======================= -->
+
+  <!-- 1. CREATE POST BOTTOM SHEET -->
+  <div id="create-post-sheet-container" class="hidden">
+    <!-- Backdrop -->
+    <div id="create-post-backdrop" class="fixed inset-0 z-40 bg-black/25 backdrop-blur-md animate-fade-in"></div>
+    
+    <!-- Sheet Content -->
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <!-- Drag handle area -->
+      <div id="create-post-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      
+      <!-- Bottom sheet form card -->
+      <div class="bg-white h-[80vh] max-w-2xl mx-auto w-full rounded-t-[32px] shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter overflow-hidden">
+        
+        <!-- Sheet Header -->
+        <header class="flex items-center justify-between px-md py-lg shrink-0 border-b border-outline-variant/10">
+          <button id="create-post-close-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">close</span>
+          </button>
+          <h1 class="text-headline-md font-bold text-on-surface">Showcase Your Work</h1>
+          <div class="w-10"></div> <!-- Spacer for symmetry -->
+        </header>
+
+        <!-- Scrollable Form content -->
+        <div class="flex-1 overflow-y-auto px-md pb-xl hide-scrollbar">
+          <form id="create-post-form" class="space-y-xl mt-4">
+            
+            <!-- Media Upload Box -->
+            <div class="space-y-xs">
+              <label class="text-label-lg font-semibold text-secondary px-base">Project Media</label>
+              <div id="media-upload-trigger" class="relative group h-60 w-full bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-xl flex flex-col items-center justify-center gap-xs cursor-pointer hover:border-primary/50 transition-all active:scale-[0.99]">
+                
+                <input type="file" id="media-file-input" accept="image/*" class="hidden" />
+                
+                <!-- Initial Upload State -->
+                <div id="upload-state-empty" class="flex flex-col items-center text-center px-md">
+                  <div class="w-16 h-16 bg-secondary-container/30 rounded-full flex items-center justify-center text-primary mb-2">
+                    <span class="material-symbols-outlined text-[32px]">add_a_photo</span>
+                  </div>
+                  <p class="text-label-lg font-bold text-on-surface">Add Photo</p>
+                  <p class="text-label-sm text-secondary mt-base">High-quality visuals get 3x more engagement from clients.</p>
+                </div>
+                
+                <!-- Preview Upload State -->
+                <div id="upload-state-preview" class="hidden absolute inset-0 w-full h-full rounded-xl overflow-hidden">
+                  <img id="media-img-preview" class="w-full h-full object-cover" src="" />
+                  <button type="button" id="remove-media-btn" class="absolute top-md right-md bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Project Details -->
+            <div class="space-y-xs">
+              <label class="text-label-lg font-semibold text-secondary px-base">Project Details</label>
+              <div class="bg-surface-container-low rounded-xl p-md border border-transparent focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                <textarea id="post-description" class="w-full bg-transparent border-none p-0 focus:ring-0 text-body-lg min-h-[100px] resize-none placeholder:text-on-surface-variant/40 outline-none" placeholder="Describe your project, materials used, time taken..."></textarea>
+              </div>
+            </div>
+
+            <!-- Tags Section -->
+            <div class="space-y-xs">
+              <label class="text-label-lg font-semibold text-secondary px-base">Tag Skills</label>
+              <div class="relative">
+                <div class="bg-surface-container-low rounded-xl p-md flex flex-wrap gap-xs items-center min-h-[56px] border border-transparent focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                  <div id="tags-active-list" class="flex flex-wrap gap-xs">
+                    <!-- Added Tags will go here -->
+                  </div>
+                  <input id="post-tag-input" class="flex-grow min-w-[120px] bg-transparent border-none p-0 focus:ring-0 text-body-md outline-none" placeholder="Add custom tag & press Enter..." type="text" />
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-xs pt-xs items-center">
+                <span class="text-xs text-secondary font-medium">Suggested:</span>
+                <button type="button" class="tag-suggestion-btn bg-surface-container px-sm py-1 rounded-full text-xs text-secondary active:bg-outline-variant hover:bg-surface-container-high transition-colors">Plumbing</button>
+                <button type="button" class="tag-suggestion-btn bg-surface-container px-sm py-1 rounded-full text-xs text-secondary active:bg-outline-variant hover:bg-surface-container-high transition-colors">Electrical</button>
+                <button type="button" class="tag-suggestion-btn bg-surface-container px-sm py-1 rounded-full text-xs text-secondary active:bg-outline-variant hover:bg-surface-container-high transition-colors">Smart Home</button>
+                <button type="button" class="tag-suggestion-btn bg-surface-container px-sm py-1 rounded-full text-xs text-secondary active:bg-outline-variant hover:bg-surface-container-high transition-colors">AC Repair</button>
+              </div>
+            </div>
+
+            <!-- Add Location & Visibility -->
+            <div class="bg-surface-container-low rounded-xl p-md space-y-md">
+              <div class="flex items-center justify-between cursor-pointer group">
+                <div class="flex items-center gap-md">
+                  <span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">location_on</span>
+                  <input id="post-location-input" type="text" class="bg-transparent border-none p-0 focus:ring-0 text-body-md text-on-surface outline-none placeholder:text-secondary/50" placeholder="Add Location (e.g. Mumbai, MH)" />
+                </div>
+              </div>
+              <div class="h-[1px] w-full bg-outline-variant/30"></div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-md">
+                  <span class="material-symbols-outlined text-secondary">visibility</span>
+                  <span class="text-body-md text-on-surface">Who can see this?</span>
+                </div>
+                <select id="post-visibility" class="bg-transparent border-none text-primary font-semibold text-label-lg focus:ring-0 outline-none cursor-pointer pr-8">
+                  <option value="Everyone">Everyone</option>
+                  <option value="Connections">Connections Only</option>
+                  <option value="Clients">Clients Only</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Spacer -->
+            <div class="h-20"></div>
+          </form>
+        </div>
+
+        <!-- Footer Publish Action -->
+        <footer class="p-md bg-white border-t border-outline-variant/20 shrink-0">
+          <div class="flex items-center gap-md">
+            <button id="create-post-submit-btn" class="w-full bg-primary text-on-primary font-semibold text-label-lg py-4 px-xl rounded-full shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all flex items-center justify-center gap-xs">
+              <span class="material-symbols-outlined text-md">send</span>
+              Post Showcase
+            </button>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 2. JOB DETAILS MODAL -->
+  <div id="job-details-modal-container" class="hidden">
+    <div id="job-details-backdrop" class="fixed inset-0 z-40 bg-black/25 backdrop-blur-md animate-fade-in"></div>
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <!-- Close handle -->
+      <div id="job-details-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      <!-- Modal Content -->
+      <div class="bg-white h-[75vh] max-w-2xl mx-auto w-full rounded-t-[32px] shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter overflow-hidden">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between px-md py-lg border-b border-outline-variant/10 shrink-0">
+          <button id="job-details-close-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">close</span>
+          </button>
+          <h2 class="text-headline-md font-bold text-on-surface">Job Details</h2>
+          <button id="job-details-bookmark-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">bookmark</span>
+          </button>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-md space-y-lg hide-scrollbar">
+          
+          <!-- Company & Title info -->
+          <div class="flex gap-md items-start">
+            <img id="job-detail-logo" class="w-16 h-16 rounded-xl bg-surface-container object-cover border border-outline-variant/20" src="" />
+            <div>
+              <h3 id="job-detail-title" class="text-xl font-bold text-on-surface">Senior Site Supervisor</h3>
+              <div class="flex items-center gap-1 mt-1">
+                <span id="job-detail-company" class="font-body-md text-secondary font-medium">BuildRight India</span>
+                <span id="job-detail-verified-badge" class="material-symbols-outlined text-[16px] text-primary hidden" style="font-variation-settings: 'FILL' 1;">verified</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick stats tags -->
+          <div class="flex flex-wrap gap-xs">
+            <div class="flex items-center gap-1 bg-surface-container-low px-sm py-1.5 rounded-lg border border-outline-variant/15 text-xs text-secondary font-medium">
+              <span class="material-symbols-outlined text-[16px]">location_on</span>
+              <span id="job-detail-location">Mumbai, MH</span>
+            </div>
+            <div class="flex items-center gap-1 bg-surface-container-low px-sm py-1.5 rounded-lg border border-outline-variant/15 text-xs text-secondary font-medium">
+              <span class="material-symbols-outlined text-[16px]">schedule</span>
+              <span id="job-detail-type">Full-time</span>
+            </div>
+            <div class="flex items-center gap-1 bg-surface-container-low px-sm py-1.5 rounded-lg border border-outline-variant/15 text-xs text-secondary font-medium">
+              <span class="material-symbols-outlined text-[16px]">payments</span>
+              <span id="job-detail-salary">₹45,000 / mo</span>
+            </div>
+            <div class="flex items-center gap-1 bg-surface-container-low px-sm py-1.5 rounded-lg border border-outline-variant/15 text-xs text-secondary font-medium">
+              <span class="material-symbols-outlined text-[16px]">group</span>
+              <span id="job-detail-applications">240 Applications</span>
+            </div>
+          </div>
+
+          <hr class="border-outline-variant/30"/>
+
+          <!-- Job description -->
+          <div class="space-y-sm">
+            <h4 class="text-label-lg font-bold text-on-surface uppercase tracking-wider text-xs">Job Description</h4>
+            <p id="job-detail-description" class="text-body-md text-on-surface-variant leading-relaxed">
+              Detailed description...
+            </p>
+          </div>
+
+          <!-- Requirements (Mock) -->
+          <div class="space-y-sm">
+            <h4 class="text-label-lg font-bold text-on-surface uppercase tracking-wider text-xs">Requirements & Skills</h4>
+            <ul class="list-disc pl-5 text-body-md text-on-surface-variant space-y-xs">
+              <li>Must possess a valid certification or diploma in the respective domain.</li>
+              <li>Strong problem-solving abilities and adherence to site safety guidelines.</li>
+              <li>A high-quality portfolio of past work showcased on JobDone is highly preferred.</li>
+              <li>Good communication and teamwork coordination skills.</li>
+            </ul>
+          </div>
+
+          <div class="h-16"></div>
+        </div>
+
+        <!-- Footer apply action -->
+        <footer class="p-md bg-white border-t border-outline-variant/20 shrink-0">
+          <button id="job-detail-apply-btn" class="w-full bg-primary text-on-primary font-bold text-label-lg py-4 px-xl rounded-full shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all">
+            Apply Now
+          </button>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 3. CHAT OVERLAY WINDOW -->
+  <div id="chat-window-container" class="hidden">
+    <!-- Sliding full view -->
+    <div class="fixed inset-0 z-50 bg-surface flex flex-col max-w-2xl mx-auto h-full animate-fade-in">
+      
+      <!-- Top Chat Header -->
+      <header class="h-16 border-b border-outline-variant/20 bg-white shadow-soft flex items-center px-md justify-between shrink-0">
+        <div class="flex items-center gap-sm">
+          <button id="chat-window-back-btn" class="p-2 hover:bg-surface-container rounded-full active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-primary">arrow_back</span>
+          </button>
+          
+          <div class="w-10 h-10 rounded-full overflow-hidden relative">
+            <img id="chat-header-avatar" class="w-full h-full object-cover" src="" />
+            <div id="chat-header-online-indicator" class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
+          </div>
+          
+          <div>
+            <h3 id="chat-header-name" class="font-semibold text-on-surface text-body-lg leading-tight">Arjun Sharma</h3>
+            <p id="chat-header-title" class="text-xs text-secondary truncate max-w-[180px]">Electrician & Automation</p>
+          </div>
+        </div>
+        
+        <div class="flex gap-xs">
+          <button id="chat-header-hire-shortcut-btn" class="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-full text-xs font-semibold active:scale-95 transition-transform">
+            Hire
+          </button>
+          <button id="chat-call-btn" class="p-2 hover:bg-surface-container rounded-full active:scale-95 transition-transform" title="Call Worker">
+            <span class="material-symbols-outlined text-secondary">phone</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Message History List -->
+      <div id="chat-messages-history" class="flex-grow overflow-y-auto p-md space-y-md bg-surface-container-low/30 flex flex-col">
+        <!-- Message bubbles get dynamically appended here -->
+      </div>
+
+      <!-- Typing Indicator -->
+      <div id="chat-typing-indicator" class="hidden px-md py-sm bg-surface-container-low/30 flex items-center gap-xs">
+        <span class="text-xs text-secondary font-medium"><span id="chat-typing-name">Arjun</span> is typing</span>
+        <div class="flex gap-[3px] items-center mt-1">
+          <div class="w-1 h-1 bg-secondary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+          <div class="w-1 h-1 bg-secondary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+          <div class="w-1 h-1 bg-secondary rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+        </div>
+      </div>
+
+      <!-- Footer message sender input -->
+      <footer class="p-md bg-white border-t border-outline-variant/20 shrink-0">
+        <form id="chat-message-form" class="flex gap-sm items-center">
+          <button type="button" id="chat-attach-btn" class="p-2 hover:bg-surface-container rounded-full active:scale-95 transition-transform" title="Send Photo">
+            <span class="material-symbols-outlined text-secondary">add_circle</span>
+          </button>
+          <input type="file" id="chat-attach-input" accept="image/*" class="hidden" />
+          <div class="flex-grow bg-surface-container-low rounded-full px-lg py-2 flex items-center border border-transparent focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+            <input id="chat-input-field" type="text" class="w-full bg-transparent border-none p-0 text-body-md focus:ring-0 outline-none placeholder:text-secondary/40" placeholder="Type a message..." autocomplete="off" />
+          </div>
+          <button type="submit" id="chat-send-btn" class="bg-primary text-on-primary w-11 h-11 rounded-full flex items-center justify-center active:scale-95 transition-transform shadow-md shadow-primary/20">
+            <span class="material-symbols-outlined text-[20px]">send</span>
+          </button>
+        </form>
+      </footer>
+
+    </div>
+  </div>
+
+
+  <!-- 4. FULL SCREEN STORY VIEWER -->
+  <div id="story-viewer-container" class="hidden">
+    <div class="fixed inset-0 z-[60] bg-black flex flex-col justify-between max-w-2xl mx-auto h-full">
+      
+      <!-- Top progress bars & header -->
+      <div class="w-full p-md z-[70] bg-gradient-to-b from-black/80 to-transparent shrink-0 space-y-md">
+        <!-- Progress bar list -->
+        <div class="flex gap-1.5 w-full h-1">
+          <div class="flex-grow bg-white/30 h-full rounded-full overflow-hidden">
+            <div id="story-progress-indicator" class="bg-white h-full w-0 transition-all duration-100 ease-linear"></div>
+          </div>
+        </div>
+        
+        <!-- Story user info -->
+        <div class="flex items-center justify-between text-white">
+          <div class="flex items-center gap-sm">
+            <img id="story-viewer-avatar" class="w-9 h-9 rounded-full object-cover border border-white/20" src="" />
+            <div>
+              <h4 id="story-viewer-name" class="font-semibold text-body-md leading-tight">Rohan K.</h4>
+              <p id="story-viewer-subtitle" class="text-[10px] text-white/60">Plumbing Spotlight</p>
+            </div>
+          </div>
+          
+          <button id="story-viewer-close-btn" class="p-1 text-white/80 hover:text-white active:scale-90 transition-transform">
+            <span class="material-symbols-outlined text-2xl">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main story display image -->
+      <div class="flex-grow w-full relative flex items-center justify-center overflow-hidden">
+        <img id="story-viewer-img" class="w-full h-auto max-h-[75vh] object-contain" src="" />
+        
+        <!-- Left/Right navigation tap regions -->
+        <div id="story-nav-left" class="absolute left-0 top-0 bottom-0 w-1/3 cursor-pointer"></div>
+        <div id="story-nav-right" class="absolute right-0 top-0 bottom-0 w-1/3 cursor-pointer"></div>
+      </div>
+
+      <!-- Story bottom caption and chat trigger -->
+      <div class="p-md z-[70] bg-gradient-to-t from-black/85 via-black/40 to-transparent space-y-md text-white shrink-0">
+        <p id="story-viewer-caption" class="text-body-md text-white/90 leading-relaxed text-center px-lg">
+          Caption of the spotlight work post.
+        </p>
+        
+        <div class="flex items-center gap-sm max-w-md mx-auto pt-sm pb-safe">
+          <button id="story-viewer-msg-btn" class="w-full bg-white text-black font-semibold text-label-lg py-3 rounded-full hover:bg-white/95 active:scale-95 transition-transform flex items-center justify-center gap-xs shadow-lg shadow-white/10">
+            <span class="material-symbols-outlined text-md">chat_bubble</span>
+            Message Worker
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- 5. HIRE ME MODAL SHEET -->
+  <div id="hire-me-modal-container" class="hidden">
+    <div id="hire-me-backdrop" class="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm animate-fade-in"></div>
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <div id="hire-me-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      <div class="bg-white h-[70vh] max-w-2xl mx-auto w-full rounded-t-[32px] shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter overflow-hidden">
+        
+        <header class="flex items-center justify-between px-md py-lg border-b border-outline-variant/10 shrink-0">
+          <button id="hire-me-close-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">close</span>
+          </button>
+          <h2 class="text-headline-md font-bold text-on-surface">Send Job Proposal</h2>
+          <div class="w-10"></div>
+        </header>
+
+        <div class="flex-grow overflow-y-auto p-md space-y-lg hide-scrollbar">
+          <p class="text-body-md text-secondary leading-relaxed">
+            Fill in the details to send a direct job offer to <span id="hire-target-name" class="font-bold text-on-surface">Arjun Sharma</span>.
+          </p>
+
+          <form id="hire-me-form" class="space-y-md">
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Job Title</label>
+              <input id="hire-job-title" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="e.g. Smart Home Electrical Wiring" required />
+            </div>
+
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Offered Pay Rate</label>
+              <input id="hire-job-pay" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="e.g. ₹2,000 / day or ₹40,000 total" required />
+            </div>
+
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Job Description & Details</label>
+              <textarea id="hire-job-desc" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl p-md h-32 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none" placeholder="Provide basic details about the work, site address, and timelines..." required></textarea>
+            </div>
+            
+            <div class="h-8"></div>
+          </form>
+        </div>
+
+        <footer class="p-md bg-white border-t border-outline-variant/20 shrink-0">
+          <button id="hire-me-submit-btn" class="w-full bg-primary text-on-primary font-bold text-label-lg py-4 px-xl rounded-full shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all">
+            Send Proposal Offer
+          </button>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 6. EDIT PROFILE MODAL SHEET -->
+  <div id="edit-profile-modal-container" class="hidden">
+    <div id="edit-profile-backdrop" class="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm animate-fade-in"></div>
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <div id="edit-profile-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      <div class="bg-white h-[75vh] max-w-2xl mx-auto w-full rounded-t-[32px] shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter overflow-hidden">
+        
+        <header class="flex items-center justify-between px-md py-lg border-b border-outline-variant/10 shrink-0">
+          <button id="edit-profile-close-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">close</span>
+          </button>
+          <h2 class="text-headline-md font-bold text-on-surface">Edit Profile</h2>
+          <div class="w-10"></div>
+        </header>
+
+        <div class="flex-grow overflow-y-auto p-md space-y-lg hide-scrollbar">
+          <form id="edit-profile-form" class="space-y-md">
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Name</label>
+              <input id="edit-prof-name" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" required />
+            </div>
+
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Tagline / Bio Intro</label>
+              <input id="edit-prof-bio" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" required />
+            </div>
+
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Skills (comma-separated)</label>
+              <input id="edit-prof-skills" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="e.g. Electrical Wiring, Circuit Analysis" />
+            </div>
+
+            <div class="space-y-xs">
+              <label class="text-xs font-bold uppercase tracking-wider text-secondary">Stats Settings (Jobs Done, Connections, Endorsements)</label>
+              <div class="grid grid-cols-3 gap-xs">
+                <input id="edit-prof-stat-jobs" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-xs text-center focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Jobs Done" />
+                <input id="edit-prof-stat-conn" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-xs text-center focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Connections" />
+                <input id="edit-prof-stat-endo" type="text" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-xs text-center focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Endorsements" />
+              </div>
+            </div>
+            
+            <div class="h-8"></div>
+          </form>
+        </div>
+
+        <footer class="p-md bg-white border-t border-outline-variant/20 shrink-0">
+          <button id="edit-profile-save-btn" class="w-full bg-primary text-on-primary font-bold text-label-lg py-4 px-xl rounded-full shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all">
+            Save Changes
+          </button>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 7. PORTFOLIO GALLERY LIGHTBOX -->
+  <div id="gallery-lightbox" class="hidden">
+    <div class="fixed inset-0 z-[80] bg-black/95 flex flex-col justify-between max-w-2xl mx-auto h-full">
+      <header class="p-md flex justify-between items-center z-[90]">
+        <h4 id="gallery-title" class="text-white text-body-lg font-semibold truncate max-w-[200px]">Portfolio item</h4>
+        <button id="gallery-close-btn" class="p-2 text-white/80 hover:text-white rounded-full active:scale-95 transition-transform">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+      
+      <div class="flex-grow flex items-center justify-center relative p-md">
+        <img id="gallery-img" class="w-full h-auto max-h-[80vh] object-contain" src="" />
+      </div>
+      
+      <footer class="p-md bg-gradient-to-t from-black/80 to-transparent text-center text-white/80 text-sm shrink-0 pb-safe">
+        JobDone Portfolio Showcase
+      </footer>
+    </div>
+  </div>
+
+
+  <!-- 9. CALLING OVERLAY -->
+  <div id="call-overlay-container" class="hidden animate-fade-in">
+    <div class="fixed inset-0 z-[90] bg-inverse-surface/95 backdrop-blur-md flex flex-col justify-between items-center py-24 text-white max-w-2xl mx-auto w-full">
+      <div class="flex flex-col items-center gap-sm text-center">
+        <span class="text-xs uppercase tracking-widest text-primary font-bold">Calling via JobDone</span>
+        <div class="w-32 h-32 rounded-full border-4 border-primary/30 overflow-hidden relative mt-lg animate-pulse">
+          <img id="call-avatar" class="w-full h-full object-cover" src="" />
+        </div>
+        <h3 id="call-name" class="text-2xl font-bold mt-md">Arjun Sharma</h3>
+        <p class="text-sm text-white/60">Connecting...</p>
+      </div>
+
+      <!-- Calling wave animation -->
+      <div class="flex gap-xs items-center h-12">
+        <div class="w-1.5 bg-primary rounded-full animate-bounce h-8" style="animation-delay: 0.1s"></div>
+        <div class="w-1.5 bg-primary rounded-full animate-bounce h-12" style="animation-delay: 0.2s"></div>
+        <div class="w-1.5 bg-primary rounded-full animate-bounce h-6" style="animation-delay: 0.3s"></div>
+        <div class="w-1.5 bg-primary rounded-full animate-bounce h-10" style="animation-delay: 0.4s"></div>
+      </div>
+
+      <button id="end-call-btn" class="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-red-600/30">
+        <span class="material-symbols-outlined text-[32px] rotate-[135deg]">phone</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 10. NOTIFICATIONS BOTTOM SHEET -->
+  <div id="notifications-sheet-container" class="hidden">
+    <div id="notifications-backdrop" class="fixed inset-0 z-40 bg-black/25 backdrop-blur-md animate-fade-in"></div>
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <div id="notifications-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      <div class="bg-white h-[60vh] max-w-2xl mx-auto w-full rounded-t-[32px] shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter overflow-hidden">
+        <header class="flex items-center justify-between px-md py-lg border-b border-outline-variant/10 shrink-0">
+          <button id="notifications-close-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">close</span>
+          </button>
+          <h2 class="text-headline-md font-bold text-on-surface">Notifications</h2>
+          <div class="w-10"></div>
+        </header>
+        <div class="flex-grow overflow-y-auto p-md space-y-md hide-scrollbar">
+          <div class="flex items-start gap-md py-sm border-b border-outline-variant/10">
+            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+              <span class="material-symbols-outlined">work</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-on-surface">Application Status Update</p>
+              <p class="text-xs text-secondary mt-0.5">BuildRight India viewed your profile for the Senior Site Supervisor role.</p>
+              <span class="text-[10px] text-secondary font-medium block mt-1">2 hours ago</span>
+            </div>
+          </div>
+          <div class="flex items-start gap-md py-sm border-b border-outline-variant/10">
+            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+              <span class="material-symbols-outlined">star</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-on-surface">Skill Endorsement</p>
+              <p class="text-xs text-secondary mt-0.5">Rajesh Kumar endorsed your Home Automation and IoT Integration skills.</p>
+              <span class="text-[10px] text-secondary font-medium block mt-1">5 hours ago</span>
+            </div>
+          </div>
+          <div class="flex items-start gap-md py-sm">
+            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
+              <span class="material-symbols-outlined">check_circle</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-on-surface">Verification Confirmed</p>
+              <p class="text-xs text-secondary mt-0.5">Congratulations! Your civil engineering credentials have been verified by JobDone.</p>
+              <span class="text-[10px] text-secondary font-medium block mt-1">1 day ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. POST OPTIONS SHEET -->
+  <div id="post-options-sheet-container" class="hidden">
+    <div id="post-options-backdrop" class="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm animate-fade-in"></div>
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <div id="post-options-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      <div class="bg-white max-w-2xl mx-auto w-full rounded-t-[32px] p-md space-y-sm shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter">
+        <button id="post-opt-share" class="w-full py-4 text-center font-semibold text-on-surface hover:bg-surface-container active:bg-surface-container-high rounded-xl transition-colors border-b border-outline-variant/10">Share Post Link</button>
+        <button id="post-opt-hide" class="w-full py-4 text-center font-semibold text-on-surface hover:bg-surface-container active:bg-surface-container-high rounded-xl transition-colors border-b border-outline-variant/10">Hide this Post</button>
+        <button id="post-opt-report" class="w-full py-4 text-center font-semibold text-red-600 hover:bg-red-50 active:bg-red-100 rounded-xl transition-colors border-b border-outline-variant/10">Report Post</button>
+        <button id="post-opt-cancel" class="w-full py-4 text-center font-semibold text-secondary hover:bg-surface-container active:bg-surface-container-high rounded-xl transition-colors mt-xs">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12. NEW MESSAGE SHEET -->
+  <div id="new-message-sheet-container" class="hidden">
+    <div id="new-message-backdrop" class="fixed inset-0 z-40 bg-black/25 backdrop-blur-md animate-fade-in"></div>
+    <div class="fixed inset-0 z-50 flex flex-col justify-end">
+      <div id="new-message-close-handle" class="w-full h-12 flex items-center justify-center cursor-pointer">
+        <div class="w-10 h-1.5 bg-white/40 rounded-full"></div>
+      </div>
+      <div class="bg-white h-[65vh] max-w-2xl mx-auto w-full rounded-t-[32px] shadow-[0px_-8px_40px_rgba(0,90,180,0.12)] flex flex-col modal-enter overflow-hidden">
+        <header class="flex items-center justify-between px-md py-lg border-b border-outline-variant/10 shrink-0">
+          <button id="new-message-close-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-transform">
+            <span class="material-symbols-outlined text-secondary">close</span>
+          </button>
+          <h2 class="text-headline-md font-bold text-on-surface">New Message</h2>
+          <div class="w-10"></div>
+        </header>
+        <div class="flex-grow overflow-y-auto p-md space-y-xs hide-scrollbar" id="new-message-contacts-list">
+          <!-- Dynamic contacts list will load here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. TOAST NOTIFICATIONS POPUP -->
+  <div id="toast-container" class="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-max max-w-xs md:max-w-sm flex flex-col gap-sm">
+    <!-- Dynamic Toasts will slide down/up here -->
+  </div>
+
+
+  <!-- ======================= SCRIPTS ======================= -->
+  <script type="module" src="/src/main.js"></script>
+
+</body>
+</html>
