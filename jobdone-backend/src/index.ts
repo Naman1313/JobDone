@@ -11,6 +11,7 @@ import authRoutes from './routes/authRoutes';
 import profileRoutes from './routes/profileRoutes';
 import jobRoutes from './routes/jobRoutes';
 import portfolioRoutes from './routes/portfolioRoutes';
+import postRoutes from './routes/postRoutes';
 
 dotenv.config();
 
@@ -36,8 +37,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/workers', profileRoutes);
 app.use('/api/jobs', jobRoutes);
-
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/posts', postRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
