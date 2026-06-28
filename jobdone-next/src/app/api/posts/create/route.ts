@@ -19,8 +19,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { content, mediaUrls, trade, location } = body;
 
-    if (!content) {
-      return NextResponse.json({ success: false, message: 'Content is required' }, { status: 400 });
+    if (!content && (!mediaUrls || mediaUrls.length === 0)) {
+      return NextResponse.json({ success: false, message: 'Content or media is required' }, { status: 400 });
     }
 
     // MediaUrls is coming as an array, we store it as a JSON string

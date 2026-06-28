@@ -1,55 +1,69 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, Mic, MapPin, Sparkles, Plus } from 'lucide-react';
+import { Search, Mic, MapPin, Sparkles, Plus, Loader2 } from 'lucide-react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInView } from 'react-intersection-observer';
 import FeedCard from '@/components/ui/FeedCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
 import StoryUploader from '@/components/feed/StoryUploader';
 import StoryViewer from '@/components/feed/StoryViewer';
 import SearchOverlay from '@/components/feed/SearchOverlay';
+import EmergencyFeed from '@/components/feed/EmergencyFeed';
 import api from '@/lib/api';
 import { useActionMenu } from '@/providers/ActionMenuProvider';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-// Mock Fallback Data to ensure the beautiful UI always renders
-const MOCK_POSTS = [
-  {
-    _id: "p1",
-    content: "Just finished completely rewiring a beautiful 3-bedroom smart home in Downtown. Integrating the new automated lighting system was a fantastic challenge! 💡🏠",
-    mediaUrls: ["https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop"],
-    trade: "Master Electrician",
-    likes: ["user1", "user2", "user3", "user4"],
-    createdAt: new Date().toISOString(),
-    location: "Downtown District",
-    authorId: {
-      _id: "u1",
-      name: "Michael Chen",
-      profilePhoto: "https://randomuser.me/api/portraits/men/32.jpg",
-      isVerified: true,
-    }
-  },
-  {
-    _id: "p2",
-    content: "Emergency call out to fix a massive pipe burst in a commercial kitchen. Had it patched and fully replaced in under 2 hours. Love the rush! 🔧💧",
-    mediaUrls: ["https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=2070&auto=format&fit=crop"],
-    trade: "Commercial Plumber",
-    likes: ["user5"],
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    location: "Westside Business Park",
-    authorId: {
-      _id: "u2",
-      name: "Sarah Jenkins",
-      profilePhoto: "https://randomuser.me/api/portraits/women/44.jpg",
-      isVerified: true,
-    }
-  }
-];
-
-const FILTERS = ["All", "Following", "Nearby", "By Trade", "Trending", "AI Picks"];
-
+const FILTERS = ["All", "Following", "Nearby", "Trending", "AI Picks"];
 export default function HomeFeed() {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("All");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTabQuery = searchParams.get('tab') || 'All';
+  const [activeFilter, setActiveFilter] = useState(activeTabQuery);
+
+  // Sync state with URL when it changes
+  useEffect(() => {
+    if (searchParams.get('tab')) {
+      setActiveFilter(searchParams.get('tab') as string);
+    }
+  }, [searchParams]);
+
+  // Live Location for Nearby
+  const [liveCoords, setLiveCoords] = useState<{lat: number | null, lon: number | null}>({ lat: null, lon: null });
+  const [liveLocationName, setLiveLocationName] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeFilter === 'Nearby' && liveCoords.lat === null && !locationError) {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            setLiveCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+              const data = await res.json();
+              const locName = data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.state || "Your Location";
+              setLiveLocationName(locName);
+            } catch(e) {
+              console.error(e);
+            }
+          },
+          (err) => setLocationError("Please allow location access to see accurate distances.")
+        );
+      } else {
+        setLocationError("Geolocation is not supported by this browser.");
+      }
+    }
+  }, [activeFilter, liveCoords.lat, locationError]);
+
+  const handleFilterClick = (filter: string) => {
+    setActiveFilter(filter);
+    router.push(`/home?tab=${filter}`, { scroll: false });
+  };
+
+  const queryClient = useQueryClient();
+  const { ref: loadMoreRef, inView } = useInView();
 
   // Stories State
   const [stories, setStories] = useState<any[]>([]);
@@ -60,8 +74,45 @@ export default function HomeFeed() {
   const [showSearch, setShowSearch] = useState(false);
   const [initialSearchQuery, setInitialSearchQuery] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [userLocation, setUserLocation] = useState<string>("");
+  const [isLocating, setIsLocating] = useState(false);
 
   const { setAskAiOpen } = useActionMenu();
+
+  const findUserLocation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!('geolocation' in navigator)) {
+      alert("Location is not supported in this browser.");
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          const locationName = data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.state || "your area";
+          setUserLocation(locationName);
+        } catch (error) {
+          console.error("Geocoding failed", error);
+          alert("Could not fetch location name.");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        setIsLocating(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          alert("Please allow location access to use this feature.");
+        } else {
+          alert("Failed to get location.");
+        }
+      },
+      { timeout: 10000 }
+    );
+  };
 
   const startVoiceSearch = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -84,7 +135,10 @@ export default function HomeFeed() {
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error", event.error);
+      // Avoid console.error to prevent Next.js dev overlay from popping up on expected errors (like Brave blocking it)
+      if (event.error !== 'no-speech') {
+        alert(`Voice search error: ${event.error}. Please check your microphone permissions.`);
+      }
       setIsRecording(false);
     };
     
@@ -95,46 +149,88 @@ export default function HomeFeed() {
     recognition.start();
   };
 
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    status,
+  } = useInfiniteQuery({
+    queryKey: ['posts', activeFilter, liveCoords.lat, liveCoords.lon],
+    queryFn: async ({ pageParam = '' }) => {
+      let url = `/api/posts/feed?filter=${activeFilter}`;
+      if (pageParam) url += `&cursor=${pageParam}`;
+      if (liveCoords.lat !== null && liveCoords.lon !== null) {
+        url += `&lat=${liveCoords.lat}&lon=${liveCoords.lon}`;
+      }
+      const res = await api.get(url);
+      if (!res.data?.success) throw new Error("Failed to fetch");
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+    initialPageParam: '',
+  });
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const postsRes = await api.get('/api/posts/feed').catch(() => null);
-        if (postsRes?.data?.success && postsRes.data.data.length > 0) {
-          setPosts(postsRes.data.data);
-        } else {
-          setPosts(MOCK_POSTS);
-        }
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-        const storiesRes = await api.get('/api/stories').catch(() => null);
-        if (storiesRes?.data?.success) {
-          setStories(storiesRes.data.data);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch from backend, using mock data.");
-        setPosts(MOCK_POSTS);
-      } finally {
-        setTimeout(() => setLoading(false), 800);
-      }
-    };
-    fetchData();
-  }, [activeFilter]);
+  // Fetch stories independently
+  useEffect(() => {
+    api.get('/api/stories').then(res => {
+      if (res.data?.success) setStories(res.data.data);
+    }).catch(console.error);
+  }, []);
 
-  const handleLike = (postId: string) => {
-    setPosts(posts.map(p => {
-      if (p._id === postId) {
-        const isLiked = p.likes.includes("me");
-        return {
-          ...p,
-          likes: isLiked ? p.likes.filter((id: string) => id !== "me") : [...p.likes, "me"]
-        };
-      }
-      return p;
-    }));
+  const posts = data?.pages.flatMap((page) => page.data) || [];
+  const loading = status === 'pending';
+  const displayPosts = posts;
+
+  const getEmptyStateMessage = () => {
+    switch(activeFilter) {
+      case 'Following': return "You aren't following anyone yet or they haven't posted.";
+      case 'Nearby': return "No professionals have posted near you recently.";
+      case 'By Trade': return "No posts found for your trade.";
+      case 'Trending': return "Nothing trending at this moment.";
+      case 'AI Picks': return "Our AI is gathering data to recommend the best posts for you.";
+      default: return "No posts found in this category yet.";
+    }
+  };
+
+  const handleLike = async (postId: string) => {
+    // Optimistic UI update via react-query cache
+    queryClient.setQueryData(['posts', activeFilter], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page: any) => ({
+          ...page,
+          data: page.data.map((post: any) => {
+            if (post._id === postId) {
+              const isLiked = post.likes.includes("me");
+              return {
+                ...post,
+                likes: isLiked ? post.likes.filter((id: string) => id !== "me") : [...post.likes, "me"]
+              };
+            }
+            return post;
+          })
+        }))
+      };
+    });
+
+    try {
+      await api.post(`/api/posts/${postId}/like`);
+    } catch (e) {
+      console.error("Failed to toggle like", e);
+      // In a real app we'd revert the optimistic update here
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen pb-24 bg-background relative">
+    <div className="w-full min-h-screen pb-24 md:pb-0 bg-background relative">
       
       {/* 1. App Bar & Search */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl pt-4 pb-2 px-4 border-b border-gray-100">
@@ -142,21 +238,24 @@ export default function HomeFeed() {
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Job<span className="text-primary">Done</span>
           </h1>
-          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm cursor-pointer hover:opacity-80">
-            <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="Me" className="w-full h-full object-cover" />
-          </div>
         </div>
 
         <div className="bg-gray-100 rounded-2xl p-1 flex items-center shadow-inner cursor-text" onClick={() => setShowSearch(true)}>
           <div className="flex-1 flex items-center px-3 gap-2">
             <Search size={18} className="text-gray-400" />
-            <div className="w-full bg-transparent border-none focus:ring-0 text-sm py-2 text-gray-400 pointer-events-none">
-              Find professionals...
+            <div className="w-full bg-transparent border-none focus:ring-0 text-sm py-2 text-gray-400 pointer-events-none truncate">
+              {userLocation ? `Find professionals in ${userLocation}...` : "Find professionals..."}
             </div>
           </div>
           <div className="flex items-center gap-1 pr-1">
-            <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
-              <MapPin size={18} />
+            <button 
+              onClick={findUserLocation}
+              disabled={isLocating}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                isLocating ? 'text-primary' : userLocation ? 'text-primary bg-primary/10' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {isLocating ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={18} />}
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); startVoiceSearch(); }} 
@@ -243,7 +342,7 @@ export default function HomeFeed() {
         {FILTERS.map(filter => (
           <button 
             key={filter}
-            onClick={() => setActiveFilter(filter)}
+            onClick={() => handleFilterClick(filter)}
             className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
               activeFilter === filter 
                 ? 'bg-gray-900 text-white shadow-md scale-105' 
@@ -257,26 +356,49 @@ export default function HomeFeed() {
 
       {/* 4. Feed */}
       <main className="px-4 py-2 mt-2">
+        <EmergencyFeed />
         {loading ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
           </>
-        ) : posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-4">
-            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
-              <Search size={48} />
+        ) : displayPosts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+              <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+                <Search size={48} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">No posts found</h3>
+              <p className="text-sm text-gray-500 mb-6">{getEmptyStateMessage()}</p>
+              <button 
+                onClick={() => handleFilterClick("All")}
+                className="px-6 py-3 bg-primary text-white font-bold rounded-full shadow-premium hover:bg-primary-hover active:scale-95 transition-all"
+              >
+                View All Posts
+              </button>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">No posts found</h3>
-            <p className="text-sm text-gray-500 mb-6">There are no professional updates in this category yet.</p>
-            <button className="px-6 py-3 bg-primary text-white font-bold rounded-full shadow-premium hover:bg-primary-hover active:scale-95 transition-all">
-              Discover Professionals
-            </button>
-          </div>
         ) : (
-          posts.map(post => (
-            <FeedCard key={post._id} post={post} onLike={handleLike} />
-          ))
+          <>
+            {locationError && activeFilter === 'Nearby' && (
+              <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-2xl mb-4 text-sm font-medium flex items-center justify-between shadow-sm">
+                <span>{locationError}</span>
+                <button onClick={() => setLocationError(null)} className="text-orange-800 opacity-70 hover:opacity-100">✕</button>
+              </div>
+            )}
+            {displayPosts.map(post => (
+              <FeedCard key={post._id} post={post} onLike={handleLike} activeTab={activeFilter} userLiveLocationName={liveLocationName} />
+            ))}
+            
+            {/* Infinite Scroll Trigger */}
+            <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
+              {isFetchingNextPage ? (
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              ) : hasNextPage ? (
+                <span className="text-sm text-gray-400">Scroll for more</span>
+              ) : (
+                <span className="text-sm text-gray-400">You're all caught up!</span>
+              )}
+            </div>
+          </>
         )}
       </main>
 

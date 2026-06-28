@@ -43,8 +43,8 @@ export default function AssistantSheet({ onClose }: AssistantSheetProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/40 flex justify-center items-end animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md h-[80vh] rounded-t-3xl flex flex-col shadow-2xl animate-in slide-in-from-bottom-full duration-300">
+    <div className="fixed inset-0 z-[100] bg-black/40 flex justify-center items-end md:items-center animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-md h-[80vh] md:h-[600px] rounded-t-3xl md:rounded-3xl flex flex-col shadow-2xl animate-in slide-in-from-bottom-full duration-300">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">

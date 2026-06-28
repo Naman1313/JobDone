@@ -1,8 +1,10 @@
 import React from 'react';
+import Link from 'next/link';
 import TrustBadge from './TrustBadge';
 import AvailabilityToggle from './AvailabilityToggle';
 
 interface WorkerCardProps {
+  userId?: string;
   photo?: string;
   name: string;
   trade: string;
@@ -14,10 +16,11 @@ interface WorkerCardProps {
 }
 
 export default function WorkerCard({
-  photo, name, trade, rating, trustScore, distance, availability, onBook
+  userId = "mock-id", photo, name, trade, rating, trustScore, distance, availability, onBook
 }: WorkerCardProps) {
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
+    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4 cursor-pointer hover:shadow-md transition-shadow relative">
+      <Link href={`/profile/${userId}`} className="absolute inset-0 z-0"></Link>
       <div className="relative w-16 h-16 rounded-full bg-gray-200 flex-shrink-0">
         {photo ? (
           <img src={photo} alt={name} className="w-full h-full object-cover rounded-full" />
@@ -45,8 +48,8 @@ export default function WorkerCard({
             )}
           </div>
           <button 
-            onClick={onBook}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBook(); }}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors relative z-10"
           >
             Book Now
           </button>

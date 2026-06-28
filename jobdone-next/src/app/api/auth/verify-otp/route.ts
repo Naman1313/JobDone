@@ -5,14 +5,14 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
-    const { phone, firebaseToken } = await req.json();
+    const { phone, otp } = await req.json();
 
-    if (!phone || !firebaseToken) {
-      return NextResponse.json({ success: false, message: 'Phone and firebase token are required' }, { status: 400 });
+    if (!phone || !otp) {
+      return NextResponse.json({ success: false, message: 'Phone and OTP are required' }, { status: 400 });
     }
 
-    // In a real app, verify the firebaseToken with firebase-admin here.
-    // For this implementation, we assume the client successfully verified with Firebase.
+    // In a real app, verify the OTP with an SMS service provider or Firebase.
+    // For this implementation, we accept any OTP for development purposes.
 
     let user = await prisma.user.findUnique({ where: { phone } });
     

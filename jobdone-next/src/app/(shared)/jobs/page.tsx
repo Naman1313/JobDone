@@ -15,11 +15,21 @@ const fetchJobs = async ({ pageParam = 1 }) => {
   
   const mockJobs = Array.from({ length: 5 }).map((_, i) => ({
     _id: `job-${pageParam}-${i}`,
-    title: `Expert Needed for Project ${pageParam}-${i}`,
-    trade: "Construction",
-    budget: 150 + i * 10,
-    distance: 2500 + i * 100,
-    urgency: i % 2 === 0 ? 'medium' : 'emergency',
+    title: `Senior Site Supervisor ${pageParam}${i}5`,
+    description: "Responsible for managing labor, verifying site safety, tracking timelines, and ensuring the quality of structural work. Requires minimum 5 years of experience.",
+    trade: "HVAC",
+    budget: "45,000 / mo",
+    duration: "1 day",
+    location: "Mumbai, MH",
+    distance: 16 + i * 2,
+    applicantsCount: 84 + i * 5,
+    aiMatchScore: 99 - i,
+    company: {
+      name: i % 2 === 0 ? "BuildRight India" : "TechConstruct",
+      isVerified: true,
+      logo: `https://ui-avatars.com/api/?name=BuildRight&background=f3f4f6&color=4b5563`
+    },
+    createdAt: i === 0 ? "3D AGO" : `${i}W AGO`,
   }));
 
   return {
@@ -52,7 +62,7 @@ export default function JobsPage() {
   }, [inView, fetchNextPage, hasNextPage]);
 
   return (
-    <div className="max-w-md mx-auto min-h-screen pb-24 bg-background">
+    <div className="w-full min-h-screen pb-24 md:pb-0 bg-background">
       
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md pt-4 pb-3 px-4 border-b border-gray-100">

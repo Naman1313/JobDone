@@ -121,6 +121,15 @@ export default function StoryViewer({ stories, initialUserIndex, onClose }: Stor
         {/* Tap targets for prev/next */}
         <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
         <div className="absolute inset-y-0 right-0 w-2/3 z-10" onClick={(e) => { e.stopPropagation(); handleNext(); }} />
+        
+        {/* Caption */}
+        {activeStory.caption && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-6">
+            <p className="text-white text-xl md:text-2xl font-bold text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight bg-black/30 px-6 py-3 rounded-2xl backdrop-blur-sm">
+              {activeStory.caption}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Top UI */}

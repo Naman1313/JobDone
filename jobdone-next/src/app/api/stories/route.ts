@@ -53,10 +53,17 @@ export async function GET(req: Request) {
     const token = authHeader?.split(' ')[1];
     
     let userId: string | null = null;
+    let followingIds: string[] = [];
     if (token) {
       try {
         const decoded: any = jwt.verify(token, process.env.JWT_ACCESS_SECRET || 'jobdone_access_secret_key');
         userId = decoded.id;
+        
+        const followingList = await prisma.follow.findMany({
+          where: { followerId: userId },
+          select: { followingId: true }
+        });
+        followingIds = followingList.map(f => f.followingId);
       } catch (err) {
         // Continue even if unauthorized to show public stories if needed, though usually stories require auth
       }
@@ -91,7 +98,6 @@ export async function GET(req: Request) {
       }
     });
 
-    // Group stories by author to match Instagram format
     const groupedStories = activeStories.reduce((acc, story) => {
       const authorId = story.authorId;
       if (!acc[authorId]) {
@@ -104,9 +110,30 @@ export async function GET(req: Request) {
       return acc;
     }, {} as Record<string, any>);
 
+    const groupedArray = Object.values(groupedStories);
+
+    // Sort: Self first, then Following, then others (by most recent story)
+    groupedArray.sort((a: any, b: any) => {
+      if (userId) {
+        const isSelfA = a.author.id === userId;
+        const isSelfB = b.author.id === userId;
+        if (isSelfA && !isSelfB) return -1;
+        if (!isSelfA && isSelfB) return 1;
+
+        const isFollowingA = followingIds.includes(a.author.id);
+        const isFollowingB = followingIds.includes(b.author.id);
+        if (isFollowingA && !isFollowingB) return -1;
+        if (!isFollowingA && isFollowingB) return 1;
+      }
+
+      const latestA = Math.max(...a.stories.map((s:any) => new Date(s.createdAt).getTime()));
+      const latestB = Math.max(...b.stories.map((s:any) => new Date(s.createdAt).getTime()));
+      return latestB - latestA;
+    });
+
     return NextResponse.json({ 
       success: true, 
-      data: Object.values(groupedStories) 
+      data: groupedArray 
     });
   } catch (error) {
     console.error('Get Stories Error:', error);

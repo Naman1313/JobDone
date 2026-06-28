@@ -4,9 +4,10 @@ import jwt from 'jsonwebtoken';
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: storyId } = await params;
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.split(' ')[1];
     
@@ -25,7 +26,6 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Emoji is required' }, { status: 400 });
     }
 
-    const { id: storyId } = params;
 
     // Check if story exists and is not expired
     const story = await prisma.story.findUnique({

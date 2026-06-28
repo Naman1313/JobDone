@@ -12,6 +12,7 @@ interface StoryUploaderProps {
 export default function StoryUploader({ onClose, onSuccess }: StoryUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +46,7 @@ export default function StoryUploader({ onClose, onSuccess }: StoryUploaderProps
       const storyRes = await api.post('/api/stories', {
         mediaUrl: uploadData.url,
         mediaType: uploadData.format === 'video' ? 'VIDEO' : 'IMAGE',
-        caption: ''
+        caption: caption
       });
 
       if (storyRes.data.success) {
@@ -118,18 +119,27 @@ export default function StoryUploader({ onClose, onSuccess }: StoryUploaderProps
 
       {/* Footer / Actions */}
       {preview && (
-        <div className="p-6 bg-gradient-to-t from-black to-transparent flex justify-end">
-          <button 
-            onClick={handleUpload}
-            disabled={uploading}
-            className="px-8 py-3 bg-primary text-white font-bold rounded-full shadow-lg hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            {uploading ? (
-              <><Loader2 size={20} className="animate-spin" /> Uploading...</>
-            ) : (
-              "Share Story"
-            )}
-          </button>
+        <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex flex-col gap-4">
+          <input 
+            type="text"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Add a caption..."
+            className="w-full bg-black/40 border border-white/20 rounded-full px-4 py-3 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-primary/50 backdrop-blur-md text-sm shadow-lg"
+          />
+          <div className="flex justify-end">
+            <button 
+              onClick={handleUpload}
+              disabled={uploading}
+              className="px-8 py-3 bg-primary text-white font-bold rounded-full shadow-[0_4px_14px_0_rgba(255,87,34,0.39)] hover:bg-primary-hover hover:shadow-[0_6px_20px_rgba(255,87,34,0.23)] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {uploading ? (
+                <><Loader2 size={20} className="animate-spin" /> Sharing...</>
+              ) : (
+                "Share Story"
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>

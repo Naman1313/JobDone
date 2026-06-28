@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Home, Compass, Briefcase, MessageCircle, Plus, Share2, BriefcaseBusiness, AlertTriangle, Sparkles, Upload } from 'lucide-react';
+import { Home, Compass, Briefcase, MessageCircle, Plus, Share2, BriefcaseBusiness, AlertTriangle, Sparkles, Upload, User } from 'lucide-react';
 import { useActionMenu } from '@/providers/ActionMenuProvider';
 
 export default function BottomNav() {
@@ -44,7 +44,7 @@ export default function BottomNav() {
       </div>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 w-full max-w-md mx-auto bg-white/80 backdrop-blur-md border-t border-gray-100 z-50 pb-safe">
+      <div className="fixed bottom-0 w-full max-w-[430px] mx-auto bg-white/80 backdrop-blur-md border-t border-gray-100 z-50 pb-safe">
         <div className="flex justify-around items-center h-16 px-2 relative">
           <NavItem href="/home" icon={<Home size={24} />} label="Home" isActive={pathname === '/home'} />
           <NavItem href="/discover" icon={<Compass size={24} />} label="Discover" isActive={pathname === '/discover'} />
@@ -59,8 +59,8 @@ export default function BottomNav() {
             </button>
           </div>
 
-          <NavItem href="/jobs" icon={<Briefcase size={24} />} label="Jobs" isActive={pathname === '/jobs'} />
           <NavItem href="/chat" icon={<MessageCircle size={24} />} label="Chat" isActive={pathname === '/chat'} />
+          <NavItem href="/profile" icon={<User size={24} />} label="Profile" isActive={pathname === '/profile'} />
         </div>
       </div>
     </>

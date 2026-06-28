@@ -23,6 +23,8 @@ model User {
   posts          Post[]
   comments       Comment[]
   likes          Like[]
+  bookmarks      Bookmark[]
+  communities    CommunityMember[]
   jobsPosted     Job[]     @relation("ClientJobs")
   applications   Application[]
   messages       Message[]
@@ -41,6 +43,17 @@ model User {
   // Epic 4 & 6
   emergencyRequests EmergencyRequest[] @relation("EmergencyRequester")
   emergencyResponses EmergencyRequest[] @relation("EmergencyResponder")
+
+  // Discover Hub Relations
+  companyId      String?
+  company        Company? @relation("CompanyEmployees", fields: [companyId], references: [id])
+  eventsOrganized Event[] @relation("EventOrganizer")
+
+  // Profile Analytics & Saved Hub
+  profileViewsReceived ProfileView[] @relation("ProfileViewsReceived")
+  profileViewsGiven    ProfileView[] @relation("ProfileViewsGiven")
+  searchAppearances    SearchAppearance[] @relation("SearchAppearances")
+  savedItems           SavedItem[] @relation("UserSavedItems")
 }
 
 model Profile {
@@ -66,6 +79,16 @@ model Profile {
   
   rating         Float     @default(0.0)
   jobsCompleted  Int       @default(0)
+
+  // Verification & Completion
+  emailVerified    Boolean @default(false)
+  phoneVerified    Boolean @default(false)
+  identityVerified Boolean @default(false)
+  resumeUrl        String?
+  completionScore  Int     @default(0)
+  
+  // Relations
+  projects         Project[]
   
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -104,9 +127,18 @@ model Post {
   mediaUrls   String?   // JSON Array
   trade       String?
   location    String?
+  latitude    Float?
+  longitude   Float?
   
   likes       Like[]
   comments    Comment[]
+  bookmarks   Bookmark[]
+  
+  views       Int       @default(0)
+  shares      Int       @default(0)
+  
+  communityId String?
+  community   Community? @relation(fields: [communityId], references: [id])
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -149,6 +181,23 @@ model Like {
   @@unique([userId, commentId])
 }
 
+model Bookmark {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  postId      String?
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  jobId       String?
+  job         Job?      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, jobId])
+}
+
 model Job {
   id          String    @id @default(uuid())
   clientId    String
@@ -168,6 +217,7 @@ model Job {
   attachments String?   // JSON Array
   
   applications Application[]
+  bookmarks    Bookmark[]
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -290,4 +340,134 @@ model EmergencyRequest {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ==========================================
+// NEW MODELS FOR EPIC: DISCOVER HUB
+// ==========================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  icon        String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Company {
+  id          String   @id @default(uuid())
+  name        String
+  logoUrl     String?
+  industry    String?
+  description String?
+  website     String?
+  location    String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  employees   User[]   @relation("CompanyEmployees")
+}
+
+model Skill {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  category    String?
+  createdAt   DateTime @default(now())
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  location    String?
+  date        DateTime
+  imageUrl    String?
+  organizerId String
+  organizer   User     @relation("EventOrganizer", fields: [organizerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Community {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  imageUrl    String?
+  trade       String?
+  isPrivate   Boolean  @default(false)
+  
+  members     CommunityMember[]
+  posts       Post[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CommunityMember {
+  id          String    @id @default(uuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role        String    @default("MEMBER") // "ADMIN", "MODERATOR", "MEMBER"
+  
+  joinedAt    DateTime  @default(now())
+
+  @@unique([communityId, userId])
+}
+
+// ==========================================
+// NEW MODELS FOR PROFILE UPGRADE
+// ==========================================
+
+model ProfileView {
+  id         String   @id @default(uuid())
+  userId     String   // The user whose profile is viewed
+  user       User     @relation("ProfileViewsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  viewerId   String?  // The user who viewed
+  viewer     User?    @relation("ProfileViewsGiven", fields: [viewerId], references: [id], onDelete: SetNull)
+  isRecruiter Boolean @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model SearchAppearance {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("SearchAppearances", fields: [userId], references: [id], onDelete: Cascade)
+  searchQuery String?
+  createdAt   DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  skillsUsed  String?  // JSON
+  techStack   String?  // JSON
+  mediaUrls   String?  // JSON
+  demoUrl     String?
+  githubUrl   String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SavedItem {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UserSavedItems", fields: [userId], references: [id], onDelete: Cascade)
+  itemType    String   // "JOB", "POST", "COMPANY", "USER", "PROJECT", "EVENT"
+  itemId      String   // The ID of the target entity
+  collection  String   @default("General") // Collection name
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, itemType, itemId, collection])
 }

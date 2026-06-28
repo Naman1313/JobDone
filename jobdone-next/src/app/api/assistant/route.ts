@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: Request) {
   try {
@@ -8,27 +9,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Message is required' }, { status: 400 });
     }
 
-    // Mock AI logic (In production, connect to OpenAI/Gemini)
-    let reply = "I'm JobDone AI. I can help you find professionals, answer questions about home repairs, and guide you through the platform.";
-    
-    const lowerMsg = message.toLowerCase();
-    if (lowerMsg.includes('plumber') || lowerMsg.includes('pipe') || lowerMsg.includes('leak')) {
-      reply = "It sounds like you need a plumber. You can search for 'Plumber' in the top search bar, or I can help you post a new Job to attract nearby professionals!";
-    } else if (lowerMsg.includes('electrician') || lowerMsg.includes('light') || lowerMsg.includes('power')) {
-      reply = "Electrical issues require a licensed professional. I recommend searching for 'Master Electrician' to find qualified workers in your area.";
-    } else if (lowerMsg.includes('price') || lowerMsg.includes('cost') || lowerMsg.includes('budget')) {
-      reply = "Prices vary by trade and location. Plumbers generally charge $50-$150/hr, while electricians might be $75-$200/hr. Would you like me to show you how to post a job with your specific budget?";
+    // If API key is missing, fallback to mock data so it doesn't crash the UI completely
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn("GEMINI_API_KEY is not set. Falling back to mock response.");
+      return NextResponse.json({ 
+        success: true, 
+        reply: "I am currently in offline mode (API Key missing). I'm JobDone AI, I can help you find professionals and navigate the app when online!" 
+      });
     }
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    // The system prompt that gives JobDone AI its personality and rules
+    const systemInstruction = `You are JobDone AI, an incredibly helpful, friendly, and professional assistant integrated into the "JobDone" app.
+JobDone is a premium social hiring platform where users can post jobs (e.g., plumbing, electrical, web development), share their portfolios, and broadcast SOS Emergencies for urgent help.
+Your goal is to assist users with their questions, guide them on how to use the app, and provide general advice on hiring or gig work.
+Keep your responses concise, well-formatted, and enthusiastic. Never break character.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: message,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      }
+    });
 
     return NextResponse.json({ 
       success: true, 
-      reply 
+      reply: response.text 
     });
   } catch (error) {
     console.error('AI Assistant Error:', error);
-    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Failed to generate response' }, { status: 500 });
   }
 }

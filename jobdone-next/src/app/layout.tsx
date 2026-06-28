@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import QueryProvider from "@/providers/QueryProvider";
 import BottomNav from "@/components/ui/BottomNav";
+import DesktopSidebar from "@/components/layout/DesktopSidebar";
 import { ActionMenuProvider } from "@/providers/ActionMenuProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import GlobalModals from "@/components/layout/GlobalModals";
@@ -33,11 +34,19 @@ export default function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               <ActionMenuProvider>
-                <main className="flex-1 w-full max-w-lg mx-auto bg-background min-h-screen relative shadow-2xl overflow-hidden flex flex-col">
-                  {children}
-                <BottomNav />
-                <GlobalModals />
-                </main>
+                {/* Mobile App Container Wrapper */}
+                <div className="mx-auto w-full max-w-[430px] min-h-screen bg-background relative flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.25)] sm:border-x sm:border-gray-200">
+                  
+                  {/* Center Content */}
+                  <main className="flex-1 w-full relative flex flex-col min-h-screen pb-16">
+                    {children}
+                  </main>
+
+                  {/* Mobile Bottom Navigation */}
+                  <BottomNav />
+                  
+                  <GlobalModals />
+                </div>
               </ActionMenuProvider>
             </AuthProvider>
           </ThemeProvider>

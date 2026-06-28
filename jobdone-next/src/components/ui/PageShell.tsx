@@ -14,7 +14,7 @@ export default function PageShell({
   title, subtitle, children, showBackButton = false, onBack, backHref = '/home' 
 }: PageShellProps) {
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col">
+    <div className="w-full min-h-screen bg-gray-50 flex flex-col md:pb-0">
       <header className="bg-white p-4 sticky top-0 z-20 shadow-sm border-b flex items-center">
         {showBackButton && (
           <Link href={backHref} onClick={onBack} className="mr-4 text-gray-500 hover:text-gray-900">
