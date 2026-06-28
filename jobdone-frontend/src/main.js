@@ -5,7 +5,13 @@ import { ApiService } from './services/ApiService.js';
 import { ChatService } from './services/ChatService.js';
 import { LocationService } from './services/LocationService.js';
 import { PwaService } from './services/PwaService.js';
+import { InfiniteScroller } from './utils/InfiniteScroller.js';
+import { PullToRefresh } from './utils/PullToRefresh.js';
 
+let feedScroller = null;
+let jobsScroller = null;
+let pullToRefreshFeed = null;
+let pullToRefreshJobs = null;
 // ==========================================
 // STATE MANAGEMENT & LOCAL STORAGE INITIALIZATION
 // ==========================================
@@ -40,7 +46,8 @@ let state = {
   storyTimer: null,
   createPostTags: ['Plumbing', 'Installation'], // In-memory tags for Create Post form
   userLocation: null, // Store coords when fetched
-  activeFeedTab: 'all' // all, following, nearby, trade, trending, ai
+  activeFeedTab: 'all', // all, following, nearby, trade, trending, ai
+  selectedTrade: getLocalStorage('jobdone_v2_trade', 'all')
 };
 
 // Enrich mock data with AI parameters (Coords, Trust Scores, Match %)
@@ -301,11 +308,15 @@ function switchView(viewName) {
   });
 
   state.currentView = viewName;
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  
+  // Only scrollTo top if we are not preserving scroll
+  // We'll let the browser keep scroll if we just un-hid it, 
+  // but if it's a fresh load or manual tab click maybe we scroll.
+  // For now, don't force scroll top to preserve scroll position!
 
-  // Run initializers
-  if (viewName === 'feed') renderFeed();
-  if (viewName === 'jobs') renderJobs();
+  // Run initializers (only if they haven't been initialized or need fresh data)
+  if (viewName === 'feed' && !feedScroller) renderFeed();
+  if (viewName === 'jobs' && !jobsScroller) renderJobs();
   if (viewName === 'messages') renderChats();
   if (viewName === 'profile') renderProfile();
 }
@@ -313,12 +324,12 @@ function switchView(viewName) {
 // ==========================================
 // FEED VIEW INITIALIZATION & ACTIONS
 // ==========================================
-function renderFeed() {
+async function renderFeed(forceRefresh = false) {
   const storiesContainer = document.getElementById('stories-container');
   const feedItems = document.getElementById('feed-items');
   if (!storiesContainer || !feedItems) return;
 
-  // 1. Render Stories
+  // 1. Fetch & Render Stories
   storiesContainer.innerHTML = '';
   
   // Own share story card
@@ -335,10 +346,18 @@ function renderFeed() {
   ownStory.addEventListener('click', () => toggleCreatePostSheet(true));
   storiesContainer.appendChild(ownStory);
 
+  try {
+    const storiesRes = await ApiService.fetch(`/api/stories?trade=${state.selectedTrade}`);
+    state.stories = storiesRes.data || [];
+    setLocalStorage('jobdone_v2_stories', state.stories);
+  } catch(e) {
+    console.error("Failed to fetch stories", e);
+  }
+
   // Workers stories cards
   state.stories.forEach((story, index) => {
     const card = document.createElement('div');
-    card.className = 'flex flex-col items-center flex-shrink-0 gap-1 cursor-pointer';
+    card.className = 'flex flex-col items-center flex-shrink-0 gap-1 cursor-pointer animate-fade-in';
     card.innerHTML = `
       <div class="w-[72px] h-[72px] rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-soft">
         <div class="w-full h-full rounded-full overflow-hidden bg-surface-container border-2 border-white dark:border-surface">
@@ -354,103 +373,212 @@ function renderFeed() {
   // 2. Render Feed Posts
   feedItems.innerHTML = '';
   
-  // Filter feed by active tab
-  let filteredFeed = [...state.feed];
-  if (state.activeFeedTab === 'following') {
-    filteredFeed = filteredFeed.filter(p => state.following.includes(p.authorName));
-  } else if (state.activeFeedTab === 'nearby') {
-    filteredFeed = filteredFeed.filter(p => p.distance && parseInt(p.distance) < 10);
-  } else if (state.activeFeedTab === 'ai') {
-    filteredFeed = filteredFeed.filter(p => p.matchScore && p.matchScore >= 90);
-  }
-  
-  // Sort feed by matchScore for AI Recommendation Engine
-  const sortedFeed = filteredFeed.sort((a, b) => {
-    const scoreA = (a.matchScore || 0) + (a.trustScore || 0);
-    const scoreB = (b.matchScore || 0) + (b.trustScore || 0);
-    return scoreB - scoreA;
-  });
+  // Feed rendering is now handled entirely by InfiniteScroller
 
   // Bind tab click events
   document.querySelectorAll('.feed-tab-btn').forEach(btn => {
-    btn.classList.remove('active', 'border-primary', 'text-primary');
-    btn.classList.add('border-transparent', 'text-secondary');
+    // Reset to inactive state
+    btn.classList.remove('bg-primary', 'text-on-primary', 'border-primary', 'border', 'active');
+    btn.classList.add('bg-surface-container', 'text-secondary');
     
-    if (btn.dataset.tab === state.activeFeedTab) {
-      btn.classList.add('active', 'border-primary', 'text-primary');
-      btn.classList.remove('border-transparent', 'text-secondary');
+    const isTradeButton = btn.dataset.tab === 'trade';
+    const isTradeActive = state.selectedTrade !== 'all';
+    
+    // Highlight if it's the active tab OR it's the trade button and a trade is selected
+    if (btn.dataset.tab === state.activeFeedTab || (isTradeButton && isTradeActive)) {
+      btn.classList.remove('bg-surface-container', 'text-secondary');
+      btn.classList.add('bg-primary', 'text-on-primary');
+    }
+    
+    // Special border styling for the AI Picks button
+    if (btn.dataset.tab === 'ai' && btn.dataset.tab !== state.activeFeedTab) {
+       btn.classList.add('border', 'border-primary/30');
     }
     
     btn.onclick = (e) => {
-      state.activeFeedTab = e.currentTarget.dataset.tab;
+      const selectedTab = e.currentTarget.dataset.tab;
+      
+      // If user clicks "trade" tab, toggle the trade filter UI
+      if (selectedTab === 'trade') {
+        TradeFilter.toggle(true);
+        return; // Do not switch tabs
+      }
+      
+      state.activeFeedTab = selectedTab;
+      if (feedScroller) {
+        feedScroller.destroy();
+        feedScroller = null;
+      }
       renderFeed();
     };
   });
 
-  sortedFeed.forEach(post => {
-    const article = document.createElement('article');
-    article.className = 'animate-slide-up bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,90,180,0.04)] overflow-hidden border border-outline-variant/20';
+  // Setup Event Delegation for Feed Actions
+  if (!feedItems.dataset.eventsBound) {
+    feedItems.dataset.eventsBound = 'true';
+    feedItems.addEventListener('click', async (e) => {
+      const likeBtn = e.target.closest('.like-btn');
+      if (likeBtn) return toggleLikePost(likeBtn.dataset.postId);
+
+      const commentBtn = e.target.closest('.comment-trigger-btn');
+      if (commentBtn) return promptAddComment(commentBtn.dataset.postId);
+
+      const shareBtn = e.target.closest('.share-post-btn');
+      if (shareBtn) return sharePost({ id: shareBtn.dataset.postId }); // Mock share 
+
+      const msgBtn = e.target.closest('.feed-msg-btn');
+      if (msgBtn) return openDirectChat(msgBtn.dataset.authorName, msgBtn.dataset.authorAvatar, msgBtn.dataset.authorTitle);
+
+      const followBtn = e.target.closest('.feed-follow-btn');
+      if (followBtn) {
+        const author = followBtn.dataset.author;
+        const isCurrentlyFollowing = state.following.includes(author);
+
+        if (isCurrentlyFollowing) {
+          if (!confirm(`Are you sure you want to unfollow ${author}?`)) return;
+        }
+
+        // Set loading state
+        const originalHTML = followBtn.innerHTML;
+        const originalClasses = followBtn.className;
+        followBtn.disabled = true;
+        followBtn.className = "feed-follow-btn px-4 py-2 bg-surface-container-high text-secondary text-xs font-bold rounded-full opacity-70 cursor-not-allowed w-28 flex items-center justify-center gap-1";
+        followBtn.innerHTML = `<span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>`;
+
+        try {
+          if (isCurrentlyFollowing) {
+            await ApiService.fetch(`/api/users/${encodeURIComponent(author)}/follow`, { method: 'DELETE' });
+            const newFollowing = state.following.filter(f => f !== author);
+            updateState('following', newFollowing);
+            showToast(`Unfollowed ${author}`);
+            
+            // Render Not Following button
+            followBtn.className = "feed-follow-btn px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-full shadow-lg shadow-primary/10 hover:bg-primary-container active:scale-95 transition-all w-28 flex items-center justify-center gap-1";
+            followBtn.innerHTML = `Follow`;
+          } else {
+            await ApiService.fetch(`/api/users/${encodeURIComponent(author)}/follow`, { method: 'POST' });
+            const newFollowing = [...state.following, author];
+            updateState('following', newFollowing);
+            showToast(`You are now following this worker.`, 'success');
+            
+            // Render Following button
+            followBtn.className = "feed-follow-btn group px-4 py-2 bg-surface-container text-secondary text-xs font-bold rounded-full border border-outline-variant/30 active:scale-95 transition-all w-28 flex items-center justify-center gap-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800";
+            followBtn.innerHTML = `<span class="group-hover:hidden flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">check</span> Following</span><span class="hidden group-hover:block">Unfollow</span>`;
+          }
+        } catch (error) {
+          // Revert on error
+          followBtn.className = originalClasses;
+          followBtn.innerHTML = originalHTML;
+          showToast(`Failed to update follow status.`, 'error');
+        }
+        followBtn.disabled = false;
+        
+        // If we are currently in the "Following" tab, we need to completely reset the feed to reflect the removed posts
+        if (state.activeFeedTab === 'following' && isCurrentlyFollowing) {
+           // We just unfollowed someone in the Following tab. Their posts should instantly disappear!
+           // We can just trigger a feed refresh.
+           renderFeed(true);
+        }
+        return;
+      }
+
+      // Profile click navigation
+      const avatarOrName = e.target.closest('.feed-avatar') || e.target.closest('.feed-author-name');
+      if (avatarOrName) {
+        const name = avatarOrName.dataset.authorName;
+        if (name === 'Arjun Sharma') switchView('profile');
+        else showToast(`Viewing ${name}'s portfolio`, 'info');
+      }
+    });
+  }
+
+  // Initialize Infinite Scroller for Feed
+  if (!feedScroller) {
+    feedScroller = new InfiniteScroller(feedItems, {
+      fetchData: async (cursor) => {
+        const followingQuery = state.activeFeedTab === 'following' ? `&following=${encodeURIComponent(state.following.join(','))}` : '';
+        return ApiService.fetch(`/api/feed?limit=10&tab=${state.activeFeedTab}&trade=${state.selectedTrade}${cursor ? '&cursor='+cursor : ''}${followingQuery}`);
+      },
+      renderItem: (post) => renderFeedPostHTML(post),
+      renderSkeleton: () => `
+        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/20 p-md mb-6 w-full h-[400px] skeleton-box"></div>
+      `,
+      emptyMessage: "No posts found. Try following more workers!",
+      endMessage: "You're all caught up on the feed."
+    });
     
-    // Build tags HTML
-    let tagsHtml = '';
-    if (post.tags && post.tags.length > 0) {
-      tagsHtml = `
-        <div class="flex flex-wrap gap-2">
-          ${post.tags.map(tag => `<span class="px-3 py-1 bg-surface-variant/50 text-on-surface-variant text-xs font-semibold rounded-full">${tag}</span>`).join('')}
-        </div>
-      `;
+    // Initialize Pull-To-Refresh
+    if (!pullToRefreshFeed) {
+      pullToRefreshFeed = new PullToRefresh(document.getElementById('view-feed'), async () => {
+        if (feedScroller) feedScroller.reset();
+      });
     }
+  }
+}
 
-    // Build media image HTML
-    let mediaHtml = '';
-    if (post.mediaUrl) {
-      mediaHtml = `
-        <div class="relative aspect-video w-full">
-          <img alt="Work Sample" class="w-full h-full object-cover" src="${post.mediaUrl}" />
-          ${post.verifiedWork ? `
-            <div class="absolute top-md right-md">
-              <span class="px-3 py-1.5 bg-primary-container/90 backdrop-blur-md text-on-primary text-xs font-bold rounded-full flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">verified</span>
-                Verified Work
-              </span>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }
+function renderFeedPostHTML(post) {
+  // Build tags HTML
+  let tagsHtml = '';
+  if (post.tags && post.tags.length > 0) {
+    tagsHtml = `
+      <div class="flex flex-wrap gap-2">
+        ${post.tags.map(tag => `<span class="px-3 py-1 bg-surface-variant/50 text-on-surface-variant text-xs font-semibold rounded-full">${tag}</span>`).join('')}
+      </div>
+    `;
+  }
 
-    // Build comment preview HTML if any
-    let commentPreview = '';
-    if (post.comments && post.comments.length > 0) {
-      commentPreview = `
-        <div class="bg-surface-container-low/40 px-md py-sm rounded-lg text-xs space-y-1">
-          ${post.comments.map(c => `
-            <div><span class="font-bold text-on-surface">${c.author}</span> <span class="text-on-surface-variant">${c.text}</span></div>
-          `).join('')}
-        </div>
-      `;
-    }
+  // Build media image HTML
+  let mediaHtml = '';
+  if (post.mediaUrl) {
+    mediaHtml = `
+      <div class="relative aspect-video w-full bg-surface-container-high">
+        <img alt="Work Sample" class="w-full h-full object-cover opacity-0 transition-opacity duration-700" data-src="${post.mediaUrl}" onload="this.classList.remove('opacity-0')" />
+        ${post.verifiedWork ? `
+          <div class="absolute top-md right-md">
+            <span class="px-3 py-1.5 bg-primary-container/90 backdrop-blur-md text-on-primary text-xs font-bold rounded-full flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+              Verified Work
+            </span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
 
-    article.innerHTML = `
+  // Build comment preview HTML if any
+  let commentPreview = '';
+  if (post.comments && post.comments.length > 0) {
+    commentPreview = `
+      <div class="bg-surface-container-low/40 px-md py-sm rounded-lg text-xs space-y-1">
+        ${post.comments.map(c => `
+          <div><span class="font-bold text-on-surface">${c.author}</span> <span class="text-on-surface-variant">${c.text}</span></div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  const isFollowing = state.following.includes(post.authorName);
+  
+  return `
+    <article class="animate-slide-up bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,90,180,0.04)] overflow-hidden border border-outline-variant/20 mb-6 w-full">
       <div class="p-md flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container cursor-pointer" id="feed-avatar-${post.id}">
-            <img alt="${post.authorName}" class="w-full h-full object-cover" src="${post.authorAvatar}" />
+          <div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container cursor-pointer feed-avatar skeleton-box" data-author-name="${post.authorName}">
+            <img alt="${post.authorName}" class="w-full h-full object-cover opacity-0 transition-opacity duration-500" data-src="${post.authorAvatar}" onload="this.classList.remove('opacity-0')" />
           </div>
           <div>
             <div class="flex items-center gap-2 flex-wrap">
-              <h3 class="font-bold text-on-surface text-sm cursor-pointer" id="feed-author-${post.id}">${post.authorName}</h3>
+              <h3 class="font-bold text-on-surface text-sm cursor-pointer feed-author-name" data-author-name="${post.authorName}">${post.authorName}</h3>
               ${post.hasPlatinumBadge ? `<span class="flex items-center gap-1 bg-[#E0F7FA]/50 text-[#00838F] px-1.5 py-0.5 rounded-full text-[9px] font-bold border border-[#B2EBF2] uppercase tracking-wider"><span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span> PLATINUM</span>` : ''}
               ${post.authorName !== state.profile.name ? `
                 <span class="text-secondary/30">•</span>
-                <button class="feed-follow-btn text-primary text-xs font-bold hover:underline transition-colors" data-author="${post.authorName}">
-                  ${state.following.includes(post.authorName) ? 'Following' : 'Follow'}
-                </button>
               ` : ''}
             </div>
             <div class="flex items-center gap-2 mt-0.5">
               <p class="text-xs font-medium text-secondary">${post.authorTitle} • ${post.timeAgo}</p>
+              ${post.trade ? `<span class="bg-secondary/10 text-secondary px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-secondary/20">${post.trade}</span>` : ''}
               ${post.matchScore ? `<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-[10px]">smart_toy</span> ${post.matchScore}% Match</span>` : ''}
+              ${post.distance ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Worker Location ' + post.distance)}" target="_blank" rel="noopener noreferrer" class="bg-[#e8f0fe] text-[#1a73e8] border border-[#1a73e8]/20 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 hover:bg-[#d2e3fc] transition-colors cursor-pointer" title="View on Google Maps"><span class="material-symbols-outlined text-[12px]">location_on</span> ${post.distance}</a>` : ''}
             </div>
           </div>
         </div>
@@ -471,7 +599,7 @@ function renderFeed() {
           <div class="flex items-center gap-4">
             <button class="like-btn flex items-center gap-1.5 text-secondary hover:text-primary transition-all duration-200 active:scale-90" data-post-id="${post.id}">
               <span class="material-symbols-outlined text-[20px] ${post.liked ? 'text-primary' : ''}" style="font-variation-settings: 'FILL' ${post.liked ? '1' : '0'};">favorite</span>
-              <span class="text-xs font-semibold select-none">${post.likes}</span>
+              <span class="text-xs font-semibold select-none like-count">${post.likes}</span>
             </button>
             <button class="comment-trigger-btn flex items-center gap-1.5 text-secondary hover:text-primary transition-all duration-200 active:scale-90" data-post-id="${post.id}">
               <span class="material-symbols-outlined text-[20px]">chat_bubble</span>
@@ -481,85 +609,48 @@ function renderFeed() {
               <span class="material-symbols-outlined text-[20px]">share</span>
             </button>
           </div>
-          
-          <button class="feed-msg-btn px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-full shadow-lg shadow-primary/10 hover:bg-primary-container active:scale-95 transition-all" data-author-name="${post.authorName}" data-author-avatar="${post.authorAvatar}" data-author-title="${post.authorTitle}">
-            Message
-          </button>
+          <div class="flex items-center gap-2">
+            ${post.authorName !== state.profile.name ? `
+              ${isFollowing ? `
+                <button class="feed-follow-btn group px-4 py-2 bg-surface-container text-secondary text-xs font-bold rounded-full border border-outline-variant/30 active:scale-95 transition-all w-28 flex items-center justify-center gap-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800" data-author="${post.authorName}">
+                  <span class="group-hover:hidden flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">check</span> Following</span>
+                  <span class="hidden group-hover:block">Unfollow</span>
+                </button>
+              ` : `
+                <button class="feed-follow-btn px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-full shadow-lg shadow-primary/10 hover:bg-primary-container active:scale-95 transition-all w-28 flex items-center justify-center gap-1" data-author="${post.authorName}">
+                  Follow
+                </button>
+              `}
+            ` : ''}
+            <button class="feed-msg-btn px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-full shadow-lg shadow-primary/10 hover:bg-primary-container active:scale-95 transition-all w-28 flex items-center justify-center gap-1" data-author-name="${post.authorName}" data-author-avatar="${post.authorAvatar}" data-author-title="${post.authorTitle}">
+              Message
+            </button>
+          </div>
         </div>
       </div>
-    `;
-
-    // Bind event handlers inside post
-    const followBtn = article.querySelector('.feed-follow-btn');
-    if (followBtn) {
-      followBtn.addEventListener('click', () => {
-        const author = followBtn.dataset.author;
-        let newFollowing = [...state.following];
-        if (newFollowing.includes(author)) {
-          newFollowing = newFollowing.filter(f => f !== author);
-          showToast(`Unfollowed ${author}`);
-        } else {
-          newFollowing.push(author);
-          showToast(`Following ${author}`, 'success');
-        }
-        updateState('following', newFollowing);
-        renderFeed();
-      });
-    }
-
-    const likeBtn = article.querySelector('.like-btn');
-    likeBtn.addEventListener('click', () => toggleLikePost(post.id));
-
-    const sharePostBtn = article.querySelector('.share-post-btn');
-    sharePostBtn.addEventListener('click', () => sharePost(post));
-
-    const msgBtn = article.querySelector('.feed-msg-btn');
-    msgBtn.addEventListener('click', () => {
-      const authorName = msgBtn.dataset.authorName;
-      const authorAvatar = msgBtn.dataset.authorAvatar;
-      const authorTitle = msgBtn.dataset.authorTitle;
-      openDirectChat(authorName, authorAvatar, authorTitle);
-    });
-
-    const commentBtn = article.querySelector('.comment-trigger-btn');
-    commentBtn.addEventListener('click', () => promptAddComment(post.id));
-
-    const feedMoreBtn = article.querySelector('.feed-more-btn');
-    if (feedMoreBtn) {
-      feedMoreBtn.addEventListener('click', () => openPostOptions(post));
-    }
-
-    // Profile click navigation (Navigate to Arjun Sharma profile if clicked Arjun)
-    const avatarClick = article.querySelector(`#feed-avatar-${post.id}`);
-    const authorClick = article.querySelector(`#feed-author-${post.id}`);
-    
-    const navToProfile = () => {
-      if (post.authorName === 'Arjun Sharma') {
-        switchView('profile');
-      } else {
-        // Mock showing details of other workers
-        showToast(`Viewing ${post.authorName}'s portfolio`, 'info');
-        openDirectChat(post.authorName, post.authorAvatar, post.authorTitle);
-      }
-    };
-    avatarClick.addEventListener('click', navToProfile);
-    authorClick.addEventListener('click', navToProfile);
-
-    feedItems.appendChild(article);
-  });
+    </article>
+  `;
 }
 
+// Ensure toggleLikePost updates DOM optimistically
 function toggleLikePost(postId) {
-  const updatedFeed = state.feed.map(post => {
-    if (post.id === postId) {
-      const liked = !post.liked;
-      const likes = liked ? post.likes + 1 : post.likes - 1;
-      return { ...post, liked, likes };
+  // Find the button and optimistically update
+  const btn = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
+  if (btn) {
+    const icon = btn.querySelector('.material-symbols-outlined');
+    const count = btn.querySelector('.like-count');
+    const isLiked = icon.classList.contains('text-primary');
+    
+    if (isLiked) {
+      icon.classList.remove('text-primary');
+      icon.style.fontVariationSettings = "'FILL' 0";
+      count.innerText = parseInt(count.innerText) - 1;
+    } else {
+      icon.classList.add('text-primary');
+      icon.style.fontVariationSettings = "'FILL' 1";
+      count.innerText = parseInt(count.innerText) + 1;
     }
-    return post;
-  });
-  updateState('feed', updatedFeed);
-  renderFeed();
+  }
 }
 
 function promptAddComment(postId) {
@@ -681,11 +772,9 @@ function openStoryViewer(index) {
       
       if (percent >= 100) {
         clearInterval(state.storyTimer);
-        if (state.activeStoryIndex + 1 < state.stories.length) {
-          openStoryViewer(state.activeStoryIndex + 1);
-        } else {
-          closeStoryViewer();
-        }
+        // Loop navigation: Go to next, or back to first if at end
+        const nextIndex = (state.activeStoryIndex + 1) % state.stories.length;
+        openStoryViewer(nextIndex);
       }
     }, 100);
   };
@@ -699,6 +788,28 @@ function openStoryViewer(index) {
   img.onmouseup = resumeStory;
   img.ontouchstart = pauseStory;
   img.ontouchend = resumeStory;
+
+  // Tap navigation
+  const navLeft = document.getElementById('story-nav-left');
+  const navRight = document.getElementById('story-nav-right');
+  
+  if (navLeft) {
+    navLeft.onclick = (e) => {
+      e.stopPropagation();
+      clearInterval(state.storyTimer);
+      const prevIndex = state.activeStoryIndex === 0 ? state.stories.length - 1 : state.activeStoryIndex - 1;
+      openStoryViewer(prevIndex);
+    };
+  }
+  
+  if (navRight) {
+    navRight.onclick = (e) => {
+      e.stopPropagation();
+      clearInterval(state.storyTimer);
+      const nextIndex = (state.activeStoryIndex + 1) % state.stories.length;
+      openStoryViewer(nextIndex);
+    };
+  }
 
   // Swipe-down-to-close gestures
   let startY = 0;
@@ -741,164 +852,236 @@ function closeStoryViewer() {
 
 // ==========================================
 // JOBS VIEW INITIALIZATION & ACTIONS
-// ==========================================
-let jobsCategoryFilter = 'all';
+// =====================================let jobsCategoryFilter = 'all';
+let jobsSearchQuery = '';
 
 function renderJobs() {
   const jobsList = document.getElementById('jobs-list');
   const searchInput = document.getElementById('jobs-search-input');
   if (!jobsList) return;
 
-  const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-  jobsList.innerHTML = '';
+  // Setup Event Delegation for Jobs Actions
+  if (!jobsList.dataset.eventsBound) {
+    jobsList.addEventListener('click', async (e) => {
+      const card = e.target.closest('.job-card');
+      if (!card) return;
+      
+      const jobId = card.dataset.jobId;
+      
+      if (e.target.closest('.apply-job-btn')) {
+        return applyToJob(jobId);
+      }
+      if (e.target.closest('.bookmark-job-btn')) {
+        return showToast("Job Bookmarked!", "info");
+      }
+      
+      // Default to opening job details
+      // Open mock details
+      showToast(`Viewing details for Job ID: ${jobId}`, "info");
+    });
+  }
   
-  // Filter jobs
-  let filteredJobs = state.jobs.filter(job => {
-    const matchesCategory = jobsCategoryFilter === 'all' || job.category.toLowerCase() === jobsCategoryFilter.toLowerCase();
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery) || job.company.toLowerCase().includes(searchQuery) || job.description.toLowerCase().includes(searchQuery);
-    return matchesCategory && matchesSearch;
-  });
-
-  // Sort by AI Match Score and Trust Score
-  filteredJobs.sort((a, b) => {
-    const scoreA = (a.matchScore || 0) + (a.trustScore || 0);
-    const scoreB = (b.matchScore || 0) + (b.trustScore || 0);
-    return scoreB - scoreA;
-  });
-
-  if (filteredJobs.length > 0 && searchQuery === '') {
-    const aiHeader = document.createElement('div');
-    aiHeader.className = 'flex items-center gap-2 mb-2 px-1';
-    aiHeader.innerHTML = `
-      <span class="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
-      <span class="text-sm font-bold text-on-surface">Top Matches for You</span>
-    `;
-    jobsList.appendChild(aiHeader);
+  // Bind search input to refresh jobs scroller
+  if (searchInput && !searchInput.dataset.eventsBound) {
+    searchInput.dataset.eventsBound = 'true';
+    // Debounce search
+    let timeout = null;
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        jobsSearchQuery = e.target.value.toLowerCase().trim();
+        if (jobsScroller) {
+          jobsScroller.destroy();
+          jobsScroller = null;
+        }
+        renderJobs();
+      }, 500);
+    });
   }
 
-  if (filteredJobs.length === 0) {
-    jobsList.innerHTML = `
-      <div class="text-center py-xl space-y-md">
-        <span class="material-symbols-outlined text-[64px] text-secondary/30">search_off</span>
-        <h3 class="font-bold text-on-surface text-lg">No Jobs Found</h3>
-        <p class="text-sm text-secondary px-lg">Try resetting filters or checking your spelling.</p>
-      </div>
-    `;
-    return;
+  // Bind category filters
+  if (!document.getElementById('filter-chips-container').dataset.eventsBound) {
+    document.getElementById('filter-chips-container').dataset.eventsBound = 'true';
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-chip').forEach(b => {
+          b.classList.remove('bg-primary', 'text-on-primary');
+          b.classList.add('bg-surface-container', 'text-secondary');
+        });
+        e.currentTarget.classList.remove('bg-surface-container', 'text-secondary');
+        e.currentTarget.classList.add('bg-primary', 'text-on-primary');
+        
+        state.activeJobsTab = e.currentTarget.dataset.category;
+        
+        if (jobsScroller) {
+          jobsScroller.destroy();
+          jobsScroller = null;
+        }
+        renderJobs();
+      });
+    });
   }
 
-  filteredJobs.forEach(job => {
-    const card = document.createElement('div');
-    card.className = `bg-surface-container-lowest rounded-xl p-md shadow-[0px_4px_20px_rgba(0,93,184,0.06)] border border-outline-variant/30 active:scale-[0.99] transition-all duration-200 cursor-pointer`;
+  // Initialize Infinite Scroller for Jobs
+  if (!jobsScroller) {
+    jobsScroller = new InfiniteScroller(jobsList, {
+      fetchData: async (cursor) => {
+        const query = jobsSearchQuery ? `&query=${encodeURIComponent(jobsSearchQuery)}` : '';
+        return ApiService.fetch(`/api/jobs?limit=10&category=${state.activeJobsTab}&trade=${state.selectedTrade}${query}${cursor ? '&cursor='+cursor : ''}`);
+      },
+      renderItem: (job) => renderJobCardHTML(job),
+      renderSkeleton: () => `
+        <div class="bg-surface-container-lowest rounded-xl p-md mb-4 w-full h-[180px] skeleton-box"></div>
+      `,
+      emptyMessage: "No jobs found. Try adjusting your filters.",
+      endMessage: "No more jobs for this category."
+    });
     
-    card.innerHTML = `
-      <div class="flex justify-between items-start mb-xs select-none">
-        <div class="flex gap-md">
-          <div class="w-12 h-12 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 border border-outline-variant/10">
-            <img class="w-full h-full object-cover" src="${job.companyLogo}" />
+    // Initialize Pull-To-Refresh
+    if (!pullToRefreshJobs) {
+      pullToRefreshJobs = new PullToRefresh(document.getElementById('view-jobs'), async () => {
+        if (jobsScroller) jobsScroller.reset();
+      });
+    }
+  }
+}
+
+function renderJobCardHTML(job) {
+  // Random AI Injection
+  let aiBlockHtml = '';
+  const rnd = Math.random();
+  if (rnd > 0.85) {
+     const types = ['🤖 AI Recommended Jobs', '🔥 Trending Jobs', '📍 Nearby Jobs', '⚡ Urgent Hiring', '💰 High Paying Jobs', '⭐ Jobs From Followed Clients'];
+     const title = types[Math.floor(Math.random() * types.length)];
+     aiBlockHtml = `
+       <div class="w-full bg-gradient-to-r from-primary/10 to-transparent p-md rounded-2xl mb-6 border-l-4 border-primary shadow-sm flex items-center justify-between cursor-pointer hover:bg-primary/10 transition-colors">
+         <div>
+           <h3 class="text-sm font-bold text-primary flex items-center gap-2">${title}</h3>
+           <p class="text-xs text-secondary mt-1 font-medium">Discover more opportunities matching this criteria.</p>
+         </div>
+         <span class="material-symbols-outlined text-primary">arrow_forward_ios</span>
+       </div>
+     `;
+  }
+  
+  return aiBlockHtml + `
+    <div class="job-card bg-surface-container-lowest rounded-3xl p-md shadow-[0px_8px_24px_rgba(0,90,180,0.06)] border border-outline-variant/30 transition-all duration-300 hover:shadow-[0px_12px_32px_rgba(0,90,180,0.12)] mb-6" data-job-id="${job.id}">
+      
+      <!-- Header: Client Profile & Meta -->
+      <div class="flex justify-between items-start mb-4">
+        <div class="flex items-center gap-3 cursor-pointer">
+          <div class="w-11 h-11 rounded-full overflow-hidden bg-surface-container border border-outline-variant/20 shadow-inner skeleton-box">
+            <img class="w-full h-full object-cover opacity-0 transition-opacity duration-300" data-src="${job.clientAvatar || job.companyLogo}" onload="this.classList.remove('opacity-0')" alt="${job.company}" />
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <h3 class="font-bold text-headline-md text-on-surface leading-snug">${job.title}</h3>
-              ${job.matchScore ? `<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 border border-primary/20"><span class="material-symbols-outlined text-[10px]">smart_toy</span> ${job.matchScore}% Match</span>` : ''}
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-on-surface text-sm tracking-tight">${job.company}</span>
+              ${job.verified ? `<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;" title="Verified Client">verified</span>` : ''}
             </div>
-            <div class="flex items-center gap-1 mt-0.5">
-              <span class="text-sm font-medium text-secondary">${job.company}</span>
-              ${job.verified ? `
-                <span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified</span>
-                <span class="text-primary font-bold text-[9px] uppercase tracking-wider">Verified</span>
-              ` : ''}
+            <div class="flex items-center gap-2 mt-0.5 text-[11px] text-secondary font-semibold uppercase tracking-wider">
+              <span>${job.timeAgo || '2h ago'}</span>
+              <span class="text-outline-variant/60">•</span>
+              <span class="text-primary-container bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">${job.trade ? job.trade : (job.category || 'General')}</span>
             </div>
           </div>
         </div>
-        <button class="bookmark-job-btn material-symbols-outlined text-secondary hover:text-primary transition-colors">bookmark</button>
+        <div class="flex items-center gap-2">
+          ${job.isUrgent ? `<span class="bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase flex items-center gap-1 shadow-sm"><span class="material-symbols-outlined text-[12px] animate-pulse">local_fire_department</span> Urgent</span>` : ''}
+          <button class="material-symbols-outlined text-secondary hover:text-primary transition-colors p-1 text-[20px] active:scale-95">more_horiz</button>
+        </div>
       </div>
-      
-      <div class="flex flex-wrap gap-xs my-md">
-        <div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/10">
-          <span class="material-symbols-outlined text-[16px] text-secondary">location_on</span>
-          <span class="text-xs text-secondary font-medium">${job.location}</span>
-        </div>
-        <div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/10">
-          <span class="material-symbols-outlined text-[16px] text-secondary">schedule</span>
-          <span class="text-xs text-secondary font-medium">${job.type}</span>
-        </div>
-        ${job.distance ? `
-        <div class="flex items-center gap-1 bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/10">
-          <span class="material-symbols-outlined text-[16px] text-secondary">explore</span>
-          <span class="text-xs text-secondary font-medium">${job.distance}km away</span>
-        </div>
+
+      <!-- Job Title & AI Match -->
+      <div class="mb-3">
+        <h3 class="font-extrabold text-headline-sm text-on-surface leading-tight mb-2">${job.title}</h3>
+        ${job.matchScore ? `
+          <div class="inline-flex items-center gap-1 bg-gradient-to-r from-[#e8f0fe] to-white text-[#1a73e8] px-2.5 py-1 rounded-lg border border-[#1a73e8]/20 shadow-sm">
+            <span class="material-symbols-outlined text-[14px]">smart_toy</span>
+            <span class="text-xs font-extrabold">${job.matchScore}% AI Match</span>
+          </div>
         ` : ''}
       </div>
       
-      ${job.matchScore >= 90 ? `
-      <div class="bg-primary/5 rounded p-2 mb-3 border border-primary/10">
-        <p class="text-[10px] text-primary font-medium flex items-start gap-1 leading-snug">
-          <span class="material-symbols-outlined text-[12px] shrink-0 pt-0.5">auto_awesome</span>
-          <span>AI Pick: ${job.matchReason || 'Strong match based on your skills, location, and past performance rating.'}</span>
-        </p>
-      </div>
-      ` : ''}
-      
-      <div class="flex justify-between items-center pt-md border-t border-outline-variant/20">
-        <div class="flex flex-col">
-          <span class="text-[10px] text-secondary uppercase font-bold tracking-wider">Pay Rate</span>
-          <span class="font-bold text-primary-container text-sm">${job.payRate}</span>
+      <!-- Description Preview -->
+      <p class="text-body-sm text-on-surface-variant leading-relaxed line-clamp-2 mb-4 font-medium">
+        ${job.description || 'Looking for an experienced professional for this role. Competitive payouts and great working environment. Immediate start required.'}
+      </p>
+
+      <!-- Badges Grid -->
+      <div class="grid grid-cols-2 gap-2.5 mb-4">
+        <div class="flex items-center gap-2.5 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/10 shadow-sm">
+          <div class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px]">payments</span>
+          </div>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-[9px] text-secondary uppercase font-bold tracking-wide">Budget</span>
+            <span class="text-xs font-bold text-on-surface truncate">${job.payRate}</span>
+          </div>
         </div>
-        
-        <div class="flex gap-sm">
-          <button class="view-job-details-btn px-sm py-2 bg-surface-container text-secondary rounded-full font-bold text-xs hover:bg-surface-container-high transition-colors">
-            Details
-          </button>
-          <button class="apply-job-btn px-lg py-2 ${job.applied ? 'bg-secondary text-white' : 'bg-primary text-on-primary'} rounded-full font-bold text-xs active:scale-95 transition-transform shadow-lg shadow-primary/10" ${job.applied ? 'disabled' : ''}>
-            ${job.applied ? 'Applied' : 'Quick Apply'}
-          </button>
+        <div class="flex items-center gap-2.5 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/10 shadow-sm">
+          <div class="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px]">schedule</span>
+          </div>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-[9px] text-secondary uppercase font-bold tracking-wide">Duration</span>
+            <span class="text-xs font-bold text-on-surface truncate">${job.duration || '1 week'}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/10 shadow-sm">
+          <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px]">location_on</span>
+          </div>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-[9px] text-secondary uppercase font-bold tracking-wide">Location</span>
+            <span class="text-xs font-bold text-on-surface truncate">${job.location}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/10 shadow-sm">
+          <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px]">route</span>
+          </div>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-[9px] text-secondary uppercase font-bold tracking-wide">Distance</span>
+            <span class="text-xs font-bold text-on-surface truncate">${job.distance || '5km away'}</span>
+          </div>
         </div>
       </div>
-    `;
 
-    // Click handler for body
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.apply-job-btn') || e.target.closest('.bookmark-job-btn')) {
-        return; // handle separately
-      }
-      openJobDetails(job);
-    });
+      <!-- Footer Meta -->
+      <div class="flex items-center justify-between text-[11px] text-secondary font-bold mb-4 px-1 uppercase tracking-wider">
+        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">group</span> ${job.applicationsCount || Math.floor(Math.random()*50)} Applicants</span>
+        <span class="flex items-center gap-1 text-primary cursor-pointer hover:underline">View Client <span class="material-symbols-outlined text-[14px]">arrow_forward</span></span>
+      </div>
 
-    // Bookmark trigger
-    card.querySelector('.bookmark-job-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      showToast("Job Bookmarked!", "info");
-    });
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 pt-4 border-t border-outline-variant/20">
+        <button class="flex-1 py-3 bg-primary text-on-primary rounded-xl font-bold text-sm hover:bg-primary-container active:scale-95 transition-all shadow-[0_4px_12px_rgba(0,90,180,0.25)] flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">send</span> Apply Now
+        </button>
+        <button class="p-3 bg-[#e8f0fe] text-[#1a73e8] rounded-xl hover:bg-[#d2e3fc] active:scale-95 transition-all flex items-center justify-center" title="Chat with Client">
+          <span class="material-symbols-outlined text-[20px]">chat</span>
+        </button>
+        <button class="p-3 bg-surface-container text-secondary rounded-xl hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center" title="Save Job">
+          <span class="material-symbols-outlined text-[20px]">bookmark</span>
+        </button>
+        <button class="p-3 bg-surface-container text-secondary rounded-xl hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center" title="Share Job">
+          <span class="material-symbols-outlined text-[20px]">share</span>
+        </button>
+      </div>
 
-    // Detail button trigger
-    card.querySelector('.view-job-details-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      openJobDetails(job);
-    });
-
-    // Apply button trigger
-    const applyBtn = card.querySelector('.apply-job-btn');
-    applyBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      applyToJob(job.id);
-    });
-
-    jobsList.appendChild(card);
-  });
+    </div>
+  `;
 }
 
 function applyToJob(jobId) {
-  const updatedJobs = state.jobs.map(job => {
-    if (job.id === jobId) {
-      return { ...job, applied: true, applicationsCount: job.applicationsCount + 1 };
-    }
-    return job;
-  });
-  updateState('jobs', updatedJobs);
-  renderJobs();
-  showToast("Application Sent Successfully!");
+  const btn = document.querySelector(`.job-card[data-job-id="${jobId}"] .apply-job-btn`);
+  if (btn && !btn.disabled) {
+    btn.disabled = true;
+    btn.innerText = 'Applied';
+    btn.classList.remove('bg-primary', 'text-on-primary');
+    btn.classList.add('bg-secondary', 'text-white');
+    showToast("Application submitted successfully!", "success");
+  }
 
   // Prepend a chat connection from this company recruiter
   const jobObj = state.jobs.find(j => j.id === jobId);
@@ -1289,6 +1472,9 @@ function renderProfile() {
   const skillsContainer = document.getElementById('profile-skills-container');
   const portfolioContainer = document.getElementById('profile-portfolio-container');
 
+  const followBtn = document.getElementById('profile-follow-btn');
+  const msgBtn = document.getElementById('profile-msg-btn');
+
   if (!avatar || !name) return;
 
   const prof = state.profile;
@@ -1301,6 +1487,75 @@ function renderProfile() {
   jobsDone.innerText = prof.jobsDone;
   connections.innerText = prof.connections;
   endorsements.innerText = prof.endorsements;
+
+  // Setup buttons
+  if (msgBtn) {
+    msgBtn.onclick = () => openDirectChat(prof.name, prof.avatar, prof.role);
+  }
+
+  if (followBtn) {
+    const isCurrentlyFollowing = state.following.includes(prof.name);
+    
+    // Initial Render
+    if (isCurrentlyFollowing) {
+      followBtn.className = "group px-4 py-3 bg-surface-container text-secondary text-sm font-bold rounded-full border border-outline-variant/30 active:scale-95 transition-all flex-1 flex items-center justify-center gap-1.5 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800";
+      followBtn.innerHTML = `<span class="group-hover:hidden flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">check</span> Following</span><span class="hidden group-hover:block">Unfollow</span>`;
+    } else {
+      followBtn.className = "px-4 py-3 bg-primary text-on-primary text-sm font-bold rounded-full shadow-lg shadow-primary/10 hover:bg-primary-container active:scale-95 transition-all flex-1 flex items-center justify-center gap-1.5";
+      followBtn.innerHTML = `Follow`;
+    }
+
+    // Click Handler
+    followBtn.onclick = async () => {
+      const currentlyFollowing = state.following.includes(prof.name);
+      
+      if (currentlyFollowing) {
+        if (!confirm(`Are you sure you want to unfollow ${prof.name}?`)) return;
+      }
+
+      const originalHTML = followBtn.innerHTML;
+      const originalClasses = followBtn.className;
+      followBtn.disabled = true;
+      followBtn.className = "px-4 py-3 bg-surface-container-high text-secondary text-sm font-bold rounded-full opacity-70 cursor-not-allowed flex-1 flex items-center justify-center gap-1.5";
+      followBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>`;
+
+      try {
+        if (currentlyFollowing) {
+          await ApiService.fetch(`/api/users/${encodeURIComponent(prof.name)}/follow`, { method: 'DELETE' });
+          const newFollowing = state.following.filter(f => f !== prof.name);
+          updateState('following', newFollowing);
+          showToast(`Unfollowed ${prof.name}`);
+          
+          prof.connections = (parseInt(prof.connections.replace(/,/g, '')) - 1).toLocaleString();
+          connections.innerText = prof.connections;
+          
+          followBtn.className = "px-4 py-3 bg-primary text-on-primary text-sm font-bold rounded-full shadow-lg shadow-primary/10 hover:bg-primary-container active:scale-95 transition-all flex-1 flex items-center justify-center gap-1.5";
+          followBtn.innerHTML = `Follow`;
+        } else {
+          await ApiService.fetch(`/api/users/${encodeURIComponent(prof.name)}/follow`, { method: 'POST' });
+          const newFollowing = [...state.following, prof.name];
+          updateState('following', newFollowing);
+          showToast(`You are now following this worker.`, 'success');
+          
+          prof.connections = (parseInt(prof.connections.replace(/,/g, '')) + 1).toLocaleString();
+          connections.innerText = prof.connections;
+          
+          followBtn.className = "group px-4 py-3 bg-surface-container text-secondary text-sm font-bold rounded-full border border-outline-variant/30 active:scale-95 transition-all flex-1 flex items-center justify-center gap-1.5 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800";
+          followBtn.innerHTML = `<span class="group-hover:hidden flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">check</span> Following</span><span class="hidden group-hover:block">Unfollow</span>`;
+        }
+      } catch (error) {
+        followBtn.className = originalClasses;
+        followBtn.innerHTML = originalHTML;
+        showToast(`Failed to update follow status.`, 'error');
+      }
+      followBtn.disabled = false;
+      
+      // Keep feed in sync
+      if (state.activeFeedTab === 'following' && currentlyFollowing) {
+         renderFeed(true);
+      }
+    };
+  }
 
   // Skills
   skillsContainer.innerHTML = '';
@@ -1957,7 +2212,93 @@ const VoiceAssistant = {
   }
 };
 
+const TRADES = [
+  "Electrician", "Plumber", "Carpenter", "Painter", "HVAC", 
+  "Mechanic", "Driver", "Mason", "Cleaner", "Interior Designer", 
+  "Welder", "AC Technician", "Gardener", "CCTV Installer", "RO Technician"
+];
+
+const TradeFilter = {
+  init() {
+    const container = document.getElementById('trade-chips-container');
+    const closeBtn = document.getElementById('close-trade-filter');
+    if (!container) return;
+
+    // Render "All" option
+    container.innerHTML = `
+      <button data-trade="all" class="trade-chip px-3 py-1 ${state.selectedTrade === 'all' ? 'bg-primary text-on-primary' : 'bg-surface-container text-secondary'} rounded-full text-xs font-bold whitespace-nowrap transition-colors">All Trades</button>
+    `;
+
+    // Render trades
+    TRADES.forEach(trade => {
+      const isSelected = state.selectedTrade === trade.toLowerCase();
+      container.innerHTML += `
+        <button data-trade="${trade.toLowerCase()}" class="trade-chip px-3 py-1 ${isSelected ? 'bg-primary text-on-primary' : 'bg-surface-container text-secondary hover:bg-surface-container-high'} rounded-full text-xs font-bold whitespace-nowrap transition-colors">${trade}</button>
+      `;
+    });
+
+    // Bind click events
+    container.addEventListener('click', (e) => {
+      const chip = e.target.closest('.trade-chip');
+      if (!chip) return;
+      
+      const newTrade = chip.dataset.trade;
+      if (newTrade !== state.selectedTrade) {
+        state.selectedTrade = newTrade;
+        setLocalStorage('jobdone_v2_trade', newTrade);
+        this.updateUI();
+        
+        // Reset infinite scrollers so they fetch with the new trade param
+        if (feedScroller) { feedScroller.destroy(); feedScroller = null; }
+        if (jobsScroller) { jobsScroller.destroy(); jobsScroller = null; }
+        
+        // Re-render active view
+        if (state.currentView === 'feed') renderFeed();
+        if (state.currentView === 'jobs') renderJobs();
+      }
+    });
+
+    // Close button
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.toggle(false);
+      });
+    }
+    
+    // Initial UI state setup if trade is not 'all'
+    if (state.selectedTrade !== 'all') {
+       this.toggle(true);
+    }
+  },
+
+  updateUI() {
+    document.querySelectorAll('.trade-chip').forEach(chip => {
+      if (chip.dataset.trade === state.selectedTrade) {
+        chip.className = 'trade-chip px-3 py-1 bg-primary text-on-primary rounded-full text-xs font-bold whitespace-nowrap transition-colors';
+      } else {
+        chip.className = 'trade-chip px-3 py-1 bg-surface-container text-secondary rounded-full text-xs font-bold whitespace-nowrap transition-colors hover:bg-surface-container-high';
+      }
+    });
+  },
+
+  toggle(show) {
+    const filterBar = document.getElementById('global-trade-filter');
+    const mainContent = document.getElementById('feed-main-content');
+    if (!filterBar || !mainContent) return;
+    if (show) {
+      filterBar.classList.remove('hidden');
+      filterBar.classList.add('flex');
+      mainContent.classList.replace('pt-20', 'pt-[100px]');
+    } else {
+      filterBar.classList.add('hidden');
+      filterBar.classList.remove('flex');
+      mainContent.classList.replace('pt-[100px]', 'pt-20');
+    }
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+  TradeFilter.init();
   
   // 1. Navigation Tab Clicks
   document.querySelectorAll('.nav-tab').forEach(tab => {

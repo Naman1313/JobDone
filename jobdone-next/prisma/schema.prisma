@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String?   @unique
+  phone          String?   @unique
+  passwordHash   String?
+  role           String?
+  isVerified     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  profile        Profile?
+  sessions       Session[]
+  posts          Post[]
+  comments       Comment[]
+  likes          Like[]
+  jobsPosted     Job[]     @relation("ClientJobs")
+  applications   Application[]
+  messages       Message[]
+  notifications  Notification[]
+  
+  followers      Follow[]  @relation("Following")
+  following      Follow[]  @relation("Follower")
+  
+  conversations  Conversation[] @relation("ConversationParticipants")
+
+  // New Relations for Epic 3
+  stories        Story[]
+  storyReactions StoryReaction[]
+  searchHistory  SearchHistory[]
+
+  // Epic 4 & 6
+  emergencyRequests EmergencyRequest[] @relation("EmergencyRequester")
+  emergencyResponses EmergencyRequest[] @relation("EmergencyResponder")
+}
+
+model Profile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  firstName      String?
+  lastName       String?
+  avatarUrl      String?
+  coverUrl       String?
+  bio            String?
+  trades         String?   // JSON Array
+  skills         String?   // JSON Array
+  location       String?
+  
+  // New Geo Fields
+  latitude       Float?
+  longitude      Float?
+  
+  portfolioUrls  String?   // JSON Array
+  certificates   String?   // JSON Array
+  
+  rating         Float     @default(0.0)
+  jobsCompleted  Int       @default(0)
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String    @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+}
+
+model Follow {
+  id           String    @id @default(uuid())
+  followerId   String
+  followingId  String
+  
+  follower     User      @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following    User      @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime  @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Post {
+  id          String    @id @default(uuid())
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  content     String
+  mediaUrls   String?   // JSON Array
+  trade       String?
+  location    String?
+  
+  likes       Like[]
+  comments    Comment[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Comment {
+  id          String    @id @default(uuid())
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  content     String
+  
+  parentId    String?
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  
+  likes       Like[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Like {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  postId      String?
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  commentId   String?
+  comment     Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  clientId    String
+  client      User      @relation("ClientJobs", fields: [clientId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String
+  trade       String
+  budget      Float?
+  budgetType  String?   // "FIXED" or "HOURLY"
+  location    String?
+  isRemote    Boolean   @default(false)
+  urgency     String?   // e.g., "Normal", "Emergency"
+  status      String    @default("OPEN")
+  deadline    DateTime?
+  skills      String?   // JSON Array
+  attachments String?   // JSON Array
+  
+  applications Application[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Application {
+  id          String            @id @default(uuid())
+  jobId       String
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  workerId    String
+  worker      User              @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  
+  coverLetter String?
+  quotePrice  Float?
+  status      String            @default("PENDING")
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([jobId, workerId])
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  participants  User[]    @relation("ConversationParticipants")
+  messages      Message[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  content        String
+  mediaUrls      String?      // JSON Array
+  isRead         Boolean      @default(false)
+  
+  createdAt      DateTime     @default(now())
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        String    // e.g., "LIKE", "COMMENT", "FOLLOW", "JOB_APPLICATION"
+  message     String
+  isRead      Boolean   @default(false)
+  
+  linkUrl     String?   // Optional URL to navigate when clicked
+  
+  createdAt   DateTime  @default(now())
+}
+
+// ==========================================
+// NEW MODELS FOR EPIC 3: HOME SCREEN FEATS
+// ==========================================
+
+model Story {
+  id          String    @id @default(uuid())
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  mediaUrl    String
+  mediaType   String    @default("IMAGE") // "IMAGE" or "VIDEO"
+  caption     String?
+  
+  views       Int       @default(0)
+  expiresAt   DateTime  // Usually 24 hours from creation
+  
+  reactions   StoryReaction[]
+  
+  createdAt   DateTime  @default(now())
+}
+
+model StoryReaction {
+  id          String    @id @default(uuid())
+  storyId     String
+  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  emoji       String    // e.g. "❤️", "🔥", "😂"
+  
+  createdAt   DateTime  @default(now())
+
+  @@unique([storyId, userId]) // User can only react once per story (can update emoji though)
+}
+
+model SearchHistory {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  query       String
+  
+  createdAt   DateTime  @default(now())
+}
+
+model EmergencyRequest {
+  id          String   @id @default(uuid())
+  requesterId String
+  requester   User     @relation("EmergencyRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  
+  responderId String?
+  responder   User?    @relation("EmergencyResponder", fields: [responderId], references: [id], onDelete: SetNull)
+  
+  latitude    Float
+  longitude   Float
+  tradeNeeded String?  // e.g., "Plumber", "Electrician"
+  status      String   @default("SEARCHING") // "SEARCHING", "ACCEPTED", "RESOLVED", "CANCELLED"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
