@@ -12,6 +12,7 @@ import profileRoutes from './routes/profileRoutes';
 import jobRoutes from './routes/jobRoutes';
 import portfolioRoutes from './routes/portfolioRoutes';
 import postRoutes from './routes/postRoutes';
+import workHistoryRoutes from './routes/workHistoryRoutes';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/profile', profileRoutes);
 app.use('/api/workers', profileRoutes);
+app.use('/api/workers', workHistoryRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/posts', postRoutes);
