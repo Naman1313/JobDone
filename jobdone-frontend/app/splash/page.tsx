@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function Splash() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export default function Splash() {
     
     // Simulate splash screen delay and then redirect
     const timer = setTimeout(() => {
-      if (!loading) {
+      if (!isLoading) {
         if (user) {
           router.push('/home');
         } else {
@@ -24,7 +24,7 @@ export default function Splash() {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [loading, user, router]);
+  }, [isLoading, user, router]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-primary overflow-hidden">
