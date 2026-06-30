@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuth } from '@/context/AuthContext';
+import Avatar from '@/components/ui/Avatar';
 
 interface WorkerData {
     user: {
@@ -113,11 +114,11 @@ export default function WorkerProfilePage() {
                 <div className="flex items-start gap-4">
                     {/* Avatar */}
                     <div className="relative">
-                        <Avatar 
-                            name={worker.name || 'Worker'} 
-                            photoUrl={worker.profilePhoto} 
-                            isVerified={worker.isVerified} 
-                            size="xl" 
+                        <Avatar
+                            name={worker.name || 'Worker'}
+                            photoUrl={worker.profilePhoto}
+                            isVerified={worker.isVerified}
+                            size="xl"
                             className="w-20 h-20 text-3xl"
                         />
                         <div className={`absolute bottom-0 left-0 w-4 h-4 rounded-full border-2 border-white ${AVAILABILITY_COLORS[workerProfile?.availability || 'offline']} z-20`} />
@@ -193,8 +194,8 @@ export default function WorkerProfilePage() {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`flex-1 py-3 text-sm font-medium capitalize transition ${activeTab === tab
-                                    ? 'text-orange-500 border-b-2 border-orange-500'
-                                    : 'text-gray-500'
+                                ? 'text-orange-500 border-b-2 border-orange-500'
+                                : 'text-gray-500'
                                 }`}
                         >
                             {tab}
