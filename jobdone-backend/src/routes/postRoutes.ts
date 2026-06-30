@@ -13,8 +13,8 @@ const router = Router();
 // Public / Authenticated discovery feed
 router.get('/feed', protect, getFeed);
 
-// Worker only actions (Creating posts)
-router.post('/', protect, restrictTo('worker'), uploadMultiple, createPost);
+// All authenticated users can create posts
+router.post('/', protect, uploadMultiple, createPost);
 
 // All authenticated users can like or save a post
 router.post('/:id/like', protect, likePost);

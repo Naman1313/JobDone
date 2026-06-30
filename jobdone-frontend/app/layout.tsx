@@ -7,6 +7,9 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import BottomNav from '@/components/ui/BottomNav';
+import NotificationProvider from '@/components/ui/NotificationProvider';
+import EmergencySOS from '@/components/ui/EmergencySOS';
+import MainLayoutWrapper from '@/components/ui/MainLayoutWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -25,10 +28,13 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <div className="pb-16 min-h-screen">
-            {children}
-          </div>
-          <BottomNav />
+          <NotificationProvider>
+            <MainLayoutWrapper>
+              {children}
+            </MainLayoutWrapper>
+            <BottomNav />
+            <EmergencySOS />
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

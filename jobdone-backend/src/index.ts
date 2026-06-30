@@ -1,50 +1,101 @@
-import express from 'express';
-import http from 'http';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import connectDB from './config/database';
-import './config/firebase';
-import './config/cloudinary';
-import authRoutes from './routes/authRoutes';
-import profileRoutes from './routes/profileRoutes';
-import jobRoutes from './routes/jobRoutes';
-import portfolioRoutes from './routes/portfolioRoutes';
-import postRoutes from './routes/postRoutes';
-import workHistoryRoutes from './routes/workHistoryRoutes';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import helmet from "helmet";
+import morgan from "morgan";
+
+// Config & Database
+import "./config/firebase";
+import connectDB from "./config/database";
+
+// Routes
+import authRoutes from "./routes/authRoutes";
+import jobRoutes from "./routes/jobRoutes";
+import profileRoutes from "./routes/profileRoutes";
+import portfolioRoutes from "./routes/portfolioRoutes";
+import postRoutes from "./routes/postRoutes";
+import bookingRoutes from "./routes/bookingRoutes";
+import chatRoutes from "./routes/chatRoutes";
+import reviewRoutes from "./routes/reviewRoutes";
+import emergencyRoutes from "./routes/emergencyRoutes";
+import Message from "./models/Message";
+import Conversation from "./models/Conversation";
 
 dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+
+// Socket.io setup
+export const io = new Server(httpServer, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"]
+  }
+});
+
+const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
 
-const app = express();
-const server = http.createServer(app);
-
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
-app.use(helmet());
-app.use(morgan('dev'));
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(helmet());
+app.use(morgan("dev"));
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'JobDone API is running' });
+// Mount routes
+app.use("/api/auth", authRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/workers", profileRoutes);
+app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/conversations", chatRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/emergency", emergencyRoutes);
+
+app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
 });
-app.use('/api/auth', authRoutes);
 
-app.use('/api/profile', profileRoutes);
-app.use('/api/workers', profileRoutes);
-app.use('/api/workers', workHistoryRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/portfolio', portfolioRoutes);
-app.use('/api/posts', postRoutes);
+// Socket.io Events
+io.on("connection", (socket) => {
+    console.log("New client connected", socket.id);
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+    socket.on("join_chat", (conversationId) => {
+        socket.join(conversationId);
+    });
+
+    socket.on("send_message", async (data) => {
+        const { conversationId, senderId, content } = data;
+        
+        try {
+            const message = await Message.create({
+                conversationId,
+                senderId,
+                content
+            });
+
+            await Conversation.findByIdAndUpdate(conversationId, {
+                lastMessage: content
+            });
+
+            io.to(conversationId).emit("receive_message", message);
+        } catch (err) {
+            console.error("Error saving message", err);
+        }
+    });
+
+    socket.on("disconnect", () => {
+        console.log("Client disconnected", socket.id);
+    });
+});
+
+httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-
-export default app;

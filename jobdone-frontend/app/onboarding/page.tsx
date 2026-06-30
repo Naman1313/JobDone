@@ -37,12 +37,12 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white max-w-md mx-auto">
+    <div className="flex flex-col min-h-screen bg-background max-w-container-max-width mx-auto">
       {/* Top Bar */}
       <div className="flex justify-end p-4">
         <button 
           onClick={() => router.push('/auth')} 
-          className="text-gray-500 font-medium hover:text-gray-800"
+          className="text-on-surface-variant font-label-lg hover:text-on-surface"
         >
           Skip
         </button>
@@ -50,15 +50,15 @@ export default function Onboarding() {
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-        <div className={`w-32 h-32 rounded-full ${slides[step].color} text-white flex items-center justify-center shadow-lg transition-colors duration-500 mb-8`}>
+        <div className={`w-32 h-32 rounded-full ${slides[step].color} text-on-primary flex items-center justify-center shadow-lg transition-colors duration-500 mb-8`}>
           <span className="text-6xl">{slides[step].icon}</span>
         </div>
         
-        <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">
+        <h2 className="text-[28px] font-headline-lg text-on-surface mb-4 font-bold tracking-tight">
           {slides[step].title}
         </h2>
         
-        <p className="text-gray-600 text-lg leading-relaxed mb-12">
+        <p className="text-on-surface-variant font-body-lg leading-relaxed mb-12">
           {slides[step].description}
         </p>
 
@@ -68,7 +68,7 @@ export default function Onboarding() {
             <div 
               key={i} 
               className={`h-2 rounded-full transition-all duration-300 ${
-                i === step ? 'w-8 bg-orange-500' : 'w-2 bg-gray-200'
+                i === step ? 'w-8 bg-primary' : 'w-2 bg-surface-dim'
               }`}
             />
           ))}
@@ -79,7 +79,7 @@ export default function Onboarding() {
       <div className="p-6">
         <button 
           onClick={nextStep}
-          className="w-full bg-orange-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-orange-600 hover:scale-[1.02] transition-all active:scale-95"
+          className="w-full bg-primary text-on-primary font-label-lg py-4 rounded-xl shadow-lg hover:bg-primary-container transition-all active:scale-95"
         >
           {step === slides.length - 1 ? 'Get Started' : 'Next'}
         </button>

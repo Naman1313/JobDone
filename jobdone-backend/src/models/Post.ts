@@ -9,6 +9,8 @@ export interface IPost extends Document {
     likes: mongoose.Types.ObjectId[];
     saves: mongoose.Types.ObjectId[];
     isPublic: boolean;
+    isJobPost: boolean;
+    jobId?: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -23,6 +25,8 @@ const PostSchema = new Schema<IPost>(
         likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
         saves: [{ type: Schema.Types.ObjectId, ref: 'User' }],
         isPublic: { type: Boolean, default: true },
+        isJobPost: { type: Boolean, default: false },
+        jobId: { type: Schema.Types.ObjectId, ref: 'Job' },
     },
     { timestamps: true }
 );
