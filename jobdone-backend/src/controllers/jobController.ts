@@ -5,6 +5,7 @@ import Job from '../models/Job';
 import Booking from '../models/Booking';
 import User from '../models/User';
 import WorkerProfile from '../models/WorkerProfile';
+import Post from '../models/Post';
 
 export const getJobs = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -57,8 +58,19 @@ export const createJob = async (req: AuthRequest, res: Response): Promise<void> 
             return;
         }
 
+        if (Number(budget) < 0) {
+            res.status(400).json({ success: false, message: 'Budget must be a positive number' });
+            return;
+        }
+        
+        const days = Number(expiryDays) || 7;
+        if (days <= 0) {
+            res.status(400).json({ success: false, message: 'Expiry days must be greater than 0' });
+            return;
+        }
+
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + (Number(expiryDays) || 7));
+        expiresAt.setDate(expiresAt.getDate() + days);
 
         const newJob = await Job.create({
             clientId: req.user.userId,
@@ -74,6 +86,18 @@ export const createJob = async (req: AuthRequest, res: Response): Promise<void> 
             urgency,
             expiresAt,
             status: 'open'
+        });
+
+        // Automatically create a Social Post for this Job
+        await Post.create({
+            authorId: req.user.userId,
+            content: `I'm looking for a ${trade} to help with: ${title}. Let me know if you are available!`,
+            mediaUrls: [],
+            trade: trade,
+            hashtags: ['job', trade, urgency],
+            isPublic: true,
+            isJobPost: true,
+            jobId: newJob._id
         });
 
         res.status(201).json({ success: true, data: newJob });
@@ -96,6 +120,11 @@ export const applyToJob = async (req: AuthRequest, res: Response): Promise<void>
         const job = await Job.findById(id);
         if (!job) {
             res.status(404).json({ success: false, message: 'Job not found' });
+            return;
+        }
+
+        if (job.clientId.toString() === req.user.userId) {
+            res.status(400).json({ success: false, message: 'You cannot apply to your own job' });
             return;
         }
 
@@ -219,6 +248,47 @@ export const hireWorker = async (req: AuthRequest, res: Response): Promise<void>
         });
     } catch (error) {
         console.error('Error hiring worker:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+export const getClientJobs = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user || req.user.role !== 'client') {
+            res.status(403).json({ success: false, message: 'Only clients can view their jobs' });
+            return;
+        }
+
+        const jobs = await Job.find({ clientId: req.user.userId })
+            .sort({ createdAt: -1 })
+            .populate({
+                path: 'applicants.workerId',
+                select: 'name profilePhoto isVerified trustScore'
+            });
+
+        res.status(200).json({ success: true, count: jobs.length, data: jobs });
+    } catch (error) {
+        console.error('Error fetching client jobs:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+export const getWorkerApplications = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user || req.user.role !== 'worker') {
+            res.status(403).json({ success: false, message: 'Only workers can view their applications' });
+            return;
+        }
+
+        const workerId = req.user.userId;
+
+        const jobs = await Job.find({ 'applicants.workerId': workerId })
+            .sort({ createdAt: -1 })
+            .populate('clientId', 'name profilePhoto');
+
+        res.status(200).json({ success: true, count: jobs.length, data: jobs });
+    } catch (error) {
+        console.error('Error fetching worker applications:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 };

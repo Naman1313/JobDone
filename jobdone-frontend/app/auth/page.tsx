@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { auth } from '@/lib/firebase';
 import {
     RecaptchaVerifier,
@@ -21,6 +21,25 @@ export default function AuthPage() {
     const [error, setError] = useState('');
     const { login } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        // Clear any stale reCAPTCHA instances on mount (especially useful after logout or hot reload)
+        if ((window as any).recaptchaVerifier) {
+            try {
+                (window as any).recaptchaVerifier.clear();
+            } catch (e) {}
+            (window as any).recaptchaVerifier = null;
+        }
+
+        return () => {
+            if ((window as any).recaptchaVerifier) {
+                try {
+                    (window as any).recaptchaVerifier.clear();
+                    (window as any).recaptchaVerifier = null;
+                } catch (e) {}
+            }
+        };
+    }, []);
 
     const setupRecaptcha = () => {
         if (!(window as any).recaptchaVerifier) {
@@ -59,10 +78,22 @@ export default function AuthPage() {
             setError('');
             const result = await confirmation.confirm(otp);
             const idToken = await result.user.getIdToken();
-            setStep('role');
             (window as any).firebaseIdToken = idToken;
+
+            // Check if user exists on the backend
+            const response = await api.post('/api/auth/verify-otp', { idToken });
+            const { token, user, roleRequired } = response.data.data;
+
+            if (roleRequired) {
+                // New user needs to choose a role
+                setStep('role');
+            } else {
+                // Existing user, log them in directly
+                login(token, user);
+                router.push('/home');
+            }
         } catch (err: any) {
-            setError('Invalid OTP. Please try again.');
+            setError(err.response?.data?.message || err.message || 'Invalid OTP. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -81,109 +112,130 @@ export default function AuthPage() {
             login(token, user);
             if (isNewUser && selectedRole === 'worker') {
                 router.push('/profile/setup');
+            } else if (isNewUser && selectedRole === 'client') {
+                router.push('/profile/client-setup');
             } else {
                 router.push('/home');
             }
         } catch (err: any) {
-            setError('Authentication failed. Please try again.');
+            setError(err.response?.data?.message || err.message || 'Authentication failed. Please try again.');
+            console.error('Auth Error:', err);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-orange-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+        <div className="min-h-screen bg-surface-warm flex items-center justify-center p-4 font-sans selection:bg-primary selection:text-white">
+            <div className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] p-8 w-full max-w-md border border-border-subtle/30">
 
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-orange-500">JobDone</h1>
-                    <p className="text-gray-500 mt-1">Find skilled workers near you</p>
+                    <h1 className="text-3xl font-bold text-primary tracking-tight">
+                        JobDone<span className="text-status-gold">.</span>
+                    </h1>
+                    <p className="text-on-surface-variant font-body-md mt-2">Find the Right Labour for you.</p>
                 </div>
 
                 {/* Step: Phone */}
                 {step === 'phone' && (
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-semibold text-gray-800">Enter your phone number</h2>
-                        <div className="flex border rounded-xl overflow-hidden">
-                            <span className="bg-gray-100 px-4 flex items-center text-gray-600 font-medium">+91</span>
+                    <div className="space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-xl font-bold text-on-surface">Welcome back</h2>
+                            <p className="text-on-surface-variant font-body-sm">Enter your phone number to sign in or create an account</p>
+                        </div>
+                        <div className="flex border border-border-subtle rounded-lg overflow-hidden h-[56px] bg-surface-warm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                            <span className="bg-surface-variant px-4 flex items-center text-on-surface-variant font-label-lg border-r border-border-subtle">+91</span>
                             <input
                                 type="tel"
                                 maxLength={10}
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                                 placeholder="9876543210"
-                                className="flex-1 px-4 py-3 outline-none text-gray-800"
+                                className="flex-1 px-4 outline-none bg-transparent text-on-surface font-body-lg placeholder:text-on-surface-variant/50"
                             />
                         </div>
-                        {error && <p className="text-red-500 text-sm">{error}</p>}
+                        {error && <p className="text-error text-sm font-medium">{error}</p>}
                         <button
                             onClick={sendOTP}
                             disabled={phone.length !== 10 || loading}
-                            className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 hover:bg-orange-600 transition"
+                            className="w-full bg-primary text-on-primary h-[56px] rounded-xl font-label-lg disabled:opacity-50 hover:bg-primary-container transition-all active:scale-[0.98] shadow-[0px_4px_12px_rgba(93,64,55,0.15)]"
                         >
-                            {loading ? 'Sending...' : 'Send OTP'}
+                            {loading ? 'Sending Code...' : 'Continue'}
                         </button>
-                        <div id="recaptcha-container" />
                     </div>
                 )}
 
                 {/* Step: OTP */}
                 {step === 'otp' && (
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-semibold text-gray-800">Enter OTP</h2>
-                        <p className="text-gray-500 text-sm">Sent to +91 {phone}</p>
+                    <div className="space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-xl font-bold text-on-surface">Verify it's you</h2>
+                            <p className="text-on-surface-variant font-body-sm">We sent a secure code to +91 {phone}</p>
+                        </div>
                         <input
                             type="tel"
                             maxLength={6}
                             value={otp}
                             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                            placeholder="Enter 6-digit OTP"
-                            className="w-full border px-4 py-3 rounded-xl outline-none text-center text-2xl tracking-widest text-gray-800"
+                            placeholder="• • • • • •"
+                            className="w-full border border-border-subtle h-[56px] rounded-lg outline-none text-center text-2xl tracking-[0.3em] text-on-surface bg-surface-warm focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:tracking-normal placeholder:text-on-surface-variant/40"
                         />
-                        {error && <p className="text-red-500 text-sm">{error}</p>}
+                        {error && <p className="text-error text-sm font-medium">{error}</p>}
                         <button
                             onClick={verifyOTP}
                             disabled={otp.length !== 6 || loading}
-                            className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 hover:bg-orange-600 transition"
+                            className="w-full bg-primary text-on-primary h-[56px] rounded-xl font-label-lg disabled:opacity-50 hover:bg-primary-container transition-all active:scale-[0.98] shadow-[0px_4px_12px_rgba(93,64,55,0.15)]"
                         >
-                            {loading ? 'Verifying...' : 'Verify OTP'}
+                            {loading ? 'Verifying...' : 'Verify & Sign In'}
                         </button>
                         <button
                             onClick={() => setStep('phone')}
-                            className="w-full text-gray-500 text-sm"
+                            className="w-full text-on-surface-variant text-sm font-medium hover:text-primary transition-colors py-2"
                         >
-                            Change number
+                            Use a different number
                         </button>
                     </div>
                 )}
 
                 {/* Step: Role */}
                 {step === 'role' && (
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-semibold text-gray-800">I am a...</h2>
-                        <p className="text-gray-500 text-sm">Choose how you want to use JobDone</p>
-                        <button
-                            onClick={() => selectRole('worker')}
-                            disabled={loading}
-                            className="w-full border-2 border-orange-500 text-orange-500 py-4 rounded-xl font-semibold hover:bg-orange-50 transition text-lg"
-                        >
-                            👷 Worker
-                            <p className="text-sm font-normal text-gray-500 mt-1">Plumber, electrician, carpenter...</p>
-                        </button>
-                        <button
-                            onClick={() => selectRole('client')}
-                            disabled={loading}
-                            className="w-full border-2 border-blue-500 text-blue-500 py-4 rounded-xl font-semibold hover:bg-blue-50 transition text-lg"
-                        >
-                            🏠 Client
-                            <p className="text-sm font-normal text-gray-500 mt-1">I need to hire someone</p>
-                        </button>
-                        {error && <p className="text-red-500 text-sm">{error}</p>}
+                    <div className="space-y-6">
+                        <div className="space-y-1 text-center">
+                            <h2 className="text-2xl font-bold text-on-surface">Choose your path</h2>
+                            <p className="text-on-surface-variant font-body-sm">How would you like to use JobDone today?</p>
+                        </div>
+                        <div className="space-y-4 mt-8">
+                            <button
+                                onClick={() => selectRole('worker')}
+                                disabled={loading}
+                                className="w-full border-2 border-outline-variant text-on-surface p-5 rounded-xl text-left hover:border-primary hover:bg-surface-variant transition-all flex items-center gap-4 group"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">👷</div>
+                                <div>
+                                    <div className="font-bold text-lg">I am a Worker</div>
+                                    <div className="text-sm text-on-surface-variant mt-1">Plumber, electrician, carpenter...</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => selectRole('client')}
+                                disabled={loading}
+                                className="w-full border-2 border-outline-variant text-on-surface p-5 rounded-xl text-left hover:border-primary hover:bg-surface-variant transition-all flex items-center gap-4 group"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">🏠</div>
+                                <div>
+                                    <div className="font-bold text-lg">I am a Client</div>
+                                    <div className="text-sm text-on-surface-variant mt-1">I need to hire someone</div>
+                                </div>
+                            </button>
+                        </div>
+                        {error && <p className="text-error text-sm font-medium text-center">{error}</p>}
                     </div>
                 )}
 
             </div>
+            {/* Always mount recaptcha-container outside conditional renders to prevent React from destroying it and causing 'Cannot read properties of null (reading style)' errors */}
+            <div id="recaptcha-container" className="fixed bottom-4 left-4" />
         </div>
     );
 }

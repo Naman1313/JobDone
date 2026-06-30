@@ -12,6 +12,11 @@ interface User {
     isVerified: boolean;
     trustScore: number;
     trustTier: string;
+    location?: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
+    address?: string;
 }
 
 interface AuthContextType {
@@ -19,6 +24,7 @@ interface AuthContextType {
     token: string | null;
     login: (token: string, user: User) => void;
     logout: () => void;
+    updateUser: (user: Partial<User>) => void;
     isLoading: boolean;
 }
 
@@ -31,32 +37,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        const savedToken = localStorage.getItem('jobdone_token');
-        const savedUser = localStorage.getItem('jobdone_user');
-        if (savedToken && savedUser) {
-            setToken(savedToken);
-            setUser(JSON.parse(savedUser));
-        }
-        setIsLoading(false);
+        const checkAuth = async () => {
+            const savedToken = localStorage.getItem('token');
+            const savedUser = localStorage.getItem('jobdone_user');
+            
+            if (savedToken && savedUser) {
+                try {
+                    const res = await fetch('http://localhost:5000/api/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${savedToken}`
+                        }
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.data) {
+                            setToken(savedToken);
+                            setUser(data.data);
+                            localStorage.setItem('jobdone_user', JSON.stringify(data.data));
+                        } else {
+                            throw new Error('Invalid response data');
+                        }
+                    } else {
+                        // Token is invalid or user deleted
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('jobdone_user');
+                        localStorage.removeItem('userId');
+                        setToken(null);
+                        setUser(null);
+                    }
+                } catch (err) {
+                    // Network error, trust local storage for now to allow offline capabilities
+                    setToken(savedToken);
+                    setUser(JSON.parse(savedUser));
+                }
+            }
+            setIsLoading(false);
+        };
+        
+        checkAuth();
     }, []);
 
     const login = (token: string, user: User) => {
-        localStorage.setItem('jobdone_token', token);
+        localStorage.setItem('token', token);
         localStorage.setItem('jobdone_user', JSON.stringify(user));
+        if (user?._id) {
+            localStorage.setItem('userId', user._id);
+        }
         setToken(token);
         setUser(user);
     };
 
     const logout = () => {
-        localStorage.removeItem('jobdone_token');
+        localStorage.removeItem('token');
         localStorage.removeItem('jobdone_user');
+        localStorage.removeItem('userId');
         setToken(null);
         setUser(null);
         router.push('/auth');
     };
 
+    const updateUser = (updates: Partial<User>) => {
+        if (user) {
+            const updatedUser = { ...user, ...updates };
+            setUser(updatedUser);
+            localStorage.setItem('jobdone_user', JSON.stringify(updatedUser));
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, updateUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

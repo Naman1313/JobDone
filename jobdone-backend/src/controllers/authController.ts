@@ -16,13 +16,8 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
     try {
         const { idToken, role } = req.body;
 
-        if (!idToken || !role) {
-            res.status(400).json({ success: false, message: 'idToken and role are required' });
-            return;
-        }
-
-        if (!['worker', 'client'].includes(role)) {
-            res.status(400).json({ success: false, message: 'Role must be worker or client' });
+        if (!idToken) {
+            res.status(400).json({ success: false, message: 'idToken is required' });
             return;
         }
 
@@ -37,17 +32,57 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
 
         // Find or create user
         let user = await User.findOne({ phone });
-        const isNewUser = !user;
 
-        if (!user) {
-            user = await User.create({ phone, role });
+        if (user) {
+            // Existing user, log them in directly
+            const token = generateToken(user._id.toString(), user.phone, user.role);
+            res.status(200).json({
+                success: true,
+                message: 'Login successful',
+                data: {
+                    token,
+                    user: {
+                        _id: user._id,
+                        phone: user.phone,
+                        role: user.role,
+                        name: user.name,
+                        profilePhoto: user.profilePhoto,
+                        isVerified: user.isVerified,
+                        trustScore: user.trustScore,
+                        trustTier: user.trustTier,
+                        location: user.location,
+                        address: user.address,
+                    },
+                    isNewUser: false,
+                },
+            });
+            return;
         }
 
+        // New User
+        if (!role) {
+            res.status(200).json({
+                success: true,
+                message: 'Role required for new user',
+                data: {
+                    isNewUser: true,
+                    roleRequired: true
+                }
+            });
+            return;
+        }
+
+        if (!['worker', 'client'].includes(role)) {
+            res.status(400).json({ success: false, message: 'Role must be worker or client' });
+            return;
+        }
+
+        user = await User.create({ phone, role });
         const token = generateToken(user._id.toString(), user.phone, user.role);
 
         res.status(200).json({
             success: true,
-            message: isNewUser ? 'Account created successfully' : 'Login successful',
+            message: 'Account created successfully',
             data: {
                 token,
                 user: {
@@ -59,8 +94,10 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
                     isVerified: user.isVerified,
                     trustScore: user.trustScore,
                     trustTier: user.trustTier,
+                    location: user.location,
+                    address: user.address,
                 },
-                isNewUser,
+                isNewUser: true,
             },
         });
     } catch (error) {

@@ -6,21 +6,21 @@ interface TrustBadgeProps {
 
 export default function TrustBadge({ score }: TrustBadgeProps) {
   let tier = 'Bronze';
-  let colors = 'bg-amber-700 text-white'; // Bronze
+  let colors = 'bg-primary text-on-primary'; // Bronze
 
   if (score >= 90) {
     tier = 'Platinum';
-    colors = 'bg-slate-800 text-white border border-gray-400 shadow-md';
+    colors = 'bg-inverse-surface text-status-gold shadow-md border border-outline-variant';
   } else if (score >= 80) {
     tier = 'Gold';
-    colors = 'bg-yellow-500 text-white shadow-md';
+    colors = 'bg-status-gold text-white shadow-md';
   } else if (score >= 60) {
     tier = 'Silver';
-    colors = 'bg-gray-300 text-gray-800';
+    colors = 'bg-surface-container-highest text-on-surface';
   }
 
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${colors}`}>
+    <span className={`font-label-sm text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${colors}`}>
       {tier}
     </span>
   );

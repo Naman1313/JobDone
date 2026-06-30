@@ -27,22 +27,22 @@ export default function Splash() {
   }, [loading, user, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-orange-500 overflow-hidden">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-primary overflow-hidden">
       <div 
         className={`transition-all duration-1000 transform flex flex-col items-center ${
           show ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-10'
         }`}
       >
-        <div className="w-24 h-24 bg-white rounded-2xl shadow-2xl flex items-center justify-center mb-6">
+        <div className="w-24 h-24 bg-surface-container-lowest rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex items-center justify-center mb-6">
           <span className="text-5xl">🛠️</span>
         </div>
-        <h1 className="text-4xl font-black text-white tracking-tight mb-2">JobDone</h1>
-        <p className="text-orange-100 font-medium tracking-wide">Work. Trust. Done.</p>
+        <h1 className="text-4xl font-headline-lg text-on-primary tracking-tight mb-2 font-bold">JobDone</h1>
+        <p className="text-surface-warm font-label-lg tracking-wide">Work. Trust. Done.</p>
         
         <div className="mt-16 flex space-x-2">
-          <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
-          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-3 h-3 bg-surface-container-lowest rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-surface-container-lowest rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-3 h-3 bg-surface-container-lowest rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
         </div>
       </div>
     </div>

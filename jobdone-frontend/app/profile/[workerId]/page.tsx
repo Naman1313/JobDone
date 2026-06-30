@@ -39,6 +39,13 @@ interface WorkerData {
         reviewerId: { name: string; profilePhoto: string };
         createdAt: string;
     }[];
+    workHistory: {
+        _id: string;
+        jobCategory: string;
+        completedAt: string;
+        clientId: { name: string; profilePhoto: string };
+        location: { coordinates: number[] };
+    }[];
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -88,7 +95,7 @@ export default function WorkerProfilePage() {
         </div>
     );
 
-    const { user: worker, workerProfile, portfolio, reviews } = data;
+    const { user: worker, workerProfile, portfolio, reviews, workHistory } = data;
     const avgRating = reviews.length
         ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
         : 'No ratings';
@@ -106,13 +113,14 @@ export default function WorkerProfilePage() {
                 <div className="flex items-start gap-4">
                     {/* Avatar */}
                     <div className="relative">
-                        <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center text-3xl overflow-hidden">
-                            {worker.profilePhoto
-                                ? <img src={worker.profilePhoto} alt={worker.name} className="w-full h-full object-cover" />
-                                : '👷'
-                            }
-                        </div>
-                        <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${AVAILABILITY_COLORS[workerProfile?.availability || 'offline']}`} />
+                        <Avatar 
+                            name={worker.name || 'Worker'} 
+                            photoUrl={worker.profilePhoto} 
+                            isVerified={worker.isVerified} 
+                            size="xl" 
+                            className="w-20 h-20 text-3xl"
+                        />
+                        <div className={`absolute bottom-0 left-0 w-4 h-4 rounded-full border-2 border-white ${AVAILABILITY_COLORS[workerProfile?.availability || 'offline']} z-20`} />
                     </div>
 
                     {/* Info */}
@@ -242,8 +250,32 @@ export default function WorkerProfilePage() {
 
                 {/* Work History Tab */}
                 {activeTab === 'history' && (
-                    <div className="p-4">
-                        <p className="text-gray-400 text-center py-8">Work history map coming in Phase 3</p>
+                    <div className="p-4 space-y-4 bg-gray-50">
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col items-center justify-center mb-4 text-center">
+                            <span className="text-2xl mb-1">🗺️</span>
+                            <p className="text-sm text-blue-600 font-medium">Map view requires Google Maps integration (Phase 4)</p>
+                        </div>
+                        {(!workHistory || workHistory.length === 0) ? (
+                            <p className="text-gray-400 text-center py-8">No past jobs recorded</p>
+                        ) : (
+                            workHistory.map(job => (
+                                <div key={job._id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex gap-4 items-center">
+                                    <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-xl">
+                                        📍
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-gray-800">{job.jobCategory}</h3>
+                                        <p className="text-xs text-gray-500 mb-1">
+                                            {new Date(job.completedAt).toLocaleDateString()}
+                                        </p>
+                                        <p className="text-sm text-gray-600">Client: {job.clientId?.name || 'Unknown'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded-md">Verified</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 )}
             </div>

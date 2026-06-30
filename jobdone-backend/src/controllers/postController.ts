@@ -16,6 +16,16 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
             return;
         }
 
+        if (!content && (!files || files.length === 0)) {
+            res.status(400).json({ success: false, message: 'Post must contain text or media' });
+            return;
+        }
+
+        if (content && content.length > 1000) {
+            res.status(400).json({ success: false, message: 'Content exceeds 1000 characters limit' });
+            return;
+        }
+
         const uploadedUrls: string[] = [];
         
         if (files && files.length > 0) {
@@ -24,7 +34,11 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
                 const uploadType = isVideo ? 'video' : 'image';
                 const result = await uploadMedia(file.path, 'posts', uploadType);
                 uploadedUrls.push(result.secure_url);
-                fs.unlinkSync(file.path);
+                try {
+                    fs.unlinkSync(file.path);
+                } catch (unlinkErr) {
+                    console.warn(`Failed to delete temp file ${file.path}:`, unlinkErr);
+                }
             }
         }
 
@@ -59,7 +73,8 @@ export const getFeed = async (req: AuthRequest, res: Response): Promise<void> =>
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(Number(limit))
-            .populate('authorId', 'name profilePhoto isVerified trustScore'); // Populate worker details
+            .populate('authorId', 'name profilePhoto isVerified trustScore role') // Populate worker details
+            .populate('jobId'); // Populate job details for job posts
 
         res.status(200).json({ success: true, count: posts.length, data: posts });
     } catch (error) {

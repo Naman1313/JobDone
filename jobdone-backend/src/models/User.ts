@@ -9,6 +9,11 @@ export interface IUser extends Document {
     trustScore: number;
     trustTier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
     isActive: boolean;
+    location?: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
+    address?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -27,6 +32,11 @@ const UserSchema = new Schema<IUser>(
             default: 'Bronze',
         },
         isActive: { type: Boolean, default: true },
+        location: {
+            type: { type: String, enum: ['Point'], default: 'Point' },
+            coordinates: { type: [Number] },
+        },
+        address: { type: String },
     },
     { timestamps: true }
 );

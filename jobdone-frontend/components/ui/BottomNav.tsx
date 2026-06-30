@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
 
-  // Hide on auth and splash screens
-  if (pathname === '/splash' || pathname === '/onboarding' || pathname === '/auth' || pathname.startsWith('/profile/setup')) {
+  // Hide BottomNav on marketing, auth, onboarding, and chat conversation routes
+  const hiddenRoutes = ['/', '/splash', '/onboarding', '/auth'];
+  if (hiddenRoutes.includes(pathname) || pathname.startsWith('/profile/setup') || pathname.startsWith('/profile/client-setup') || pathname.startsWith('/chat/')) {
     return null;
   }
 
@@ -51,8 +54,8 @@ export default function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 w-full max-w-md mx-auto bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-50">
-      <div className="flex justify-around items-center h-16">
+    <div className="fixed bottom-6 left-0 right-0 z-50 px-6 w-full md:max-w-2xl mx-auto pointer-events-none">
+      <nav className="pointer-events-auto flex justify-around items-center h-[72px] px-2 bg-white/40 backdrop-blur-md saturate-[1.2] shadow-[0_8px_32px_rgba(93,64,55,0.15)] border border-white/60 rounded-[36px] transition-all hover:bg-white/50">
         {tabs.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           
@@ -60,20 +63,27 @@ export default function BottomNav() {
             <Link 
               key={tab.name} 
               href={tab.href}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
-                isActive ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'
-              }`}
+              className="relative flex flex-col items-center justify-center h-full w-[72px] transition-all duration-300 active:scale-95 group"
             >
-              <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'scale-100'}`}>
+              {isActive && (
+                <div className="absolute inset-0 m-auto w-15 h-14 bg-primary/20 backdrop-blur-md rounded-xl -z-10 shadow-sm border border-primary/20" />
+              )}
+              
+              <div className={`transition-transform duration-300 ${isActive ? '-translate-y-0.5 text-primary drop-shadow-md' : 'text-on-surface font-medium group-hover:text-primary group-hover:-translate-y-1 drop-shadow-sm'}`}>
                 {tab.icon}
               </div>
-              <span className={`text-[10px] font-medium ${isActive ? 'font-bold' : ''}`}>
+              
+              <span className={`font-label-sm text-[10px] mt-1 transition-colors duration-300 ${
+                isActive 
+                  ? 'text-primary font-bold drop-shadow-sm' 
+                  : 'text-on-surface font-semibold group-hover:text-primary drop-shadow-sm'
+              }`}>
                 {tab.name}
               </span>
             </Link>
           );
         })}
-      </div>
+      </nav>
     </div>
   );
 }

@@ -45,9 +45,13 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
+        const updateData: any = { name: req.body.name, profilePhoto: req.body.profilePhoto };
+        if (req.body.location) updateData.location = req.body.location;
+        if (req.body.address) updateData.address = req.body.address;
+
         const user = await User.findByIdAndUpdate(
             userId,
-            { name: req.body.name, profilePhoto: req.body.profilePhoto },
+            updateData,
             { new: true }
         ).select('-__v');
 
@@ -112,13 +116,89 @@ export const getNearbyWorkers = async (req: AuthRequest, res: Response): Promise
             availability: { $ne: 'offline' },
         };
 
-        if (trade) matchStage.trade = trade;
+        if (trade) {
+            matchStage.trade = new RegExp(trade as string, 'i');
+        }
 
         const workers = await WorkerProfile.find(matchStage)
             .populate('userId', 'name profilePhoto trustScore trustTier isVerified')
             .limit(20);
 
         res.status(200).json({ success: true, data: workers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// GET /api/workers/:id/history
+export const getWorkerHistory = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const history = await WorkHistory.find({ workerId: id })
+            .populate('clientId', 'name profilePhoto')
+            .sort({ completedAt: -1 })
+            .limit(50);
+            
+        res.status(200).json({ success: true, count: history.length, data: history });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// POST /api/workers/history
+export const addWorkHistory = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { workerId, clientId, location, jobCategory } = req.body;
+
+        const newHistory = await WorkHistory.create({
+            workerId,
+            clientId,
+            location: {
+                type: 'Point',
+                coordinates: location.coordinates // [lng, lat]
+            },
+            jobCategory
+        });
+
+        res.status(201).json({ success: true, data: newHistory });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// POST /api/workers/verify
+export const verifyWorker = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user?.userId;
+        const { documentUrl } = req.body;
+
+        if (!documentUrl) {
+            res.status(400).json({ success: false, message: 'Document URL is required' });
+            return;
+        }
+
+        // Mock verification logic
+        const user = await User.findById(userId);
+        if (!user) {
+            res.status(404).json({ success: false, message: 'User not found' });
+            return;
+        }
+
+        user.isVerified = true;
+        user.trustScore = Math.min(100, user.trustScore + 20);
+        
+        // Upgrade trust tier based on score
+        if (user.trustScore >= 90) user.trustTier = 'Platinum';
+        else if (user.trustScore >= 70) user.trustTier = 'Gold';
+        else if (user.trustScore >= 40) user.trustTier = 'Silver';
+        
+        await user.save();
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Verification successful',
+            data: user 
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
