@@ -51,7 +51,7 @@ export default function ManageJobs() {
     const fetchJobs = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/jobs/client`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/jobs/client`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -83,7 +83,7 @@ export default function ManageJobs() {
     try {
       setHiringJobId(jobId);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}/hire/${workerId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/jobs/${jobId}/hire/${workerId}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

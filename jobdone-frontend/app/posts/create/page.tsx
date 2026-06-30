@@ -35,7 +35,7 @@ export default function CreatePost() {
         formData.append('media', file);
       });
 
-      const res = await fetch('http://localhost:5000/api/posts', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/posts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}` // Let fetch handle multipart/form-data boundary

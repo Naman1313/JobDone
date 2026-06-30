@@ -16,7 +16,7 @@ export default function InboxPage() {
     const fetchConversations = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/conversations`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/conversations`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

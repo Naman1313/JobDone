@@ -34,7 +34,7 @@ export default function VerifyProfilePage() {
       await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate background check
 
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/workers/verify', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/workers/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

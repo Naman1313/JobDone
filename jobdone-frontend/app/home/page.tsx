@@ -47,7 +47,7 @@ export default function HomeFeed() {
     const fetchFeed = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/posts/feed', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/posts/feed`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -68,7 +68,7 @@ export default function HomeFeed() {
   const handleLike = async (postId: string) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -92,7 +92,7 @@ export default function HomeFeed() {
   const handleApply = async (jobId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}/apply`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/jobs/${jobId}/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

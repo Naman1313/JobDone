@@ -70,7 +70,7 @@ export default function JobBoard() {
       });
       
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/jobs?${query}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/jobs?${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -98,7 +98,7 @@ export default function JobBoard() {
       });
 
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/workers/nearby?${query}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/workers/nearby?${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -165,7 +165,7 @@ export default function JobBoard() {
     try {
       setActionLoading(jobId);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}/apply`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/jobs/${jobId}/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

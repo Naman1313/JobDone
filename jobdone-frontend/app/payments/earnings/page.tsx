@@ -11,7 +11,7 @@ export default function EarningsDashboard() {
     const fetchEarnings = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/bookings/earnings`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/bookings/earnings`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

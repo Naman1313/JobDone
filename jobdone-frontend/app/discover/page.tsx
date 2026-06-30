@@ -12,7 +12,7 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     const fetchWithCoords = (lat: number, lng: number) => {
-      let url = `http://localhost:5000/api/workers/nearby?lat=${lat}&lng=${lng}&radius=50`;
+      let url = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/workers/nearby?lat=${lat}&lng=${lng}&radius=50`;
       if (tradeFilter) {
         url += `&trade=${tradeFilter}`;
       }

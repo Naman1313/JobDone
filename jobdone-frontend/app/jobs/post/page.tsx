@@ -80,7 +80,7 @@ export default function PostJob() {
         address: location.address,
       };
 
-      const res = await fetch('http://localhost:5000/api/jobs', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/jobs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

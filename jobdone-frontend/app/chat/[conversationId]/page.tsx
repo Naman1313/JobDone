@@ -27,7 +27,7 @@ export default function ChatPage() {
         const token = localStorage.getItem('token');
         
         // Fetch Metadata
-        const metaRes = await fetch(`http://localhost:5000/api/conversations/${conversationId}`, {
+        const metaRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/conversations/${conversationId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const metaData = await metaRes.json();
@@ -37,7 +37,7 @@ export default function ChatPage() {
         }
 
         // Fetch Messages
-        const msgRes = await fetch(`http://localhost:5000/api/conversations/${conversationId}/messages`, {
+        const msgRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/conversations/${conversationId}/messages`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const msgData = await msgRes.json();
@@ -52,7 +52,7 @@ export default function ChatPage() {
     fetchChatData();
 
     // 2. Setup Socket
-    socketRef.current = io("http://localhost:5000");
+    socketRef.current = io(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}`);
     
     socketRef.current.on("connect", () => {
       setIsConnected(true);

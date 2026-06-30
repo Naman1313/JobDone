@@ -17,7 +17,7 @@ export default function NotificationProvider({ children }: { children: React.Rea
     }
 
     // 2. Listen to Socket events
-    const socket = io("http://localhost:5000");
+    const socket = io(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}`);
 
     socket.on("push_notification", (data: any) => {
       // Check if notification is meant for this user or is global

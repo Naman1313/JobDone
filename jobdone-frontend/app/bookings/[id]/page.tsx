@@ -15,7 +15,7 @@ export default function BookingTrackerPage() {
   const fetchBooking = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/bookings/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -37,7 +37,7 @@ export default function BookingTrackerPage() {
   const updateStatus = async (newStatus: string) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5000/api/bookings/${id}/status`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/bookings/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ export default function BookingTrackerPage() {
   const completeJob = async () => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5000/api/bookings/${id}/complete`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/bookings/${id}/complete`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

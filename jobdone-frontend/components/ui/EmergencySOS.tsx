@@ -50,7 +50,7 @@ export default function EmergencySOS() {
     try {
       // In a real app we would fetch actual GPS coordinates here
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:5000/api/emergency/sos', {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/emergency/sos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

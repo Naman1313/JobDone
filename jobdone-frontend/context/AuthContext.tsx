@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             if (savedToken && savedUser) {
                 try {
-                    const res = await fetch('http://localhost:5000/api/auth/me', {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/auth/me`, {
                         headers: {
                             'Authorization': `Bearer ${savedToken}`
                         }

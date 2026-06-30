@@ -52,7 +52,7 @@ export default function ProfileDashboard() {
                 const token = localStorage.getItem('token');
                 const userId = localStorage.getItem('userId') || 'mockUserId'; 
                 
-                const res = await fetch(`http://localhost:5000/api/profile/${userId}`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/profile/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
