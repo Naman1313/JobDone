@@ -30,7 +30,7 @@ JobDone serves two primary groups, with a UX designed specifically for their nee
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React.js (via Vite) built as a Progressive Web App (PWA)
+- **Frontend:** Next.js built as a Progressive Web App (PWA)
 - **Styling:** Tailwind CSS
 - **Backend:** Node.js with Express
 - **Database:** MongoDB Atlas (utilizing `2dsphere` geospatial indexes for precise location matching)
