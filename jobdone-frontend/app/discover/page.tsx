@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import PageShell from "../../components/ui/PageShell";
 import WorkerCard from "../../components/ui/WorkerCard";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DiscoverPage() {
+  const { user } = useAuth();
   const [workers, setWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [tradeFilter, setTradeFilter] = useState("");
+  const [locationError, setLocationError] = useState("");
 
   useEffect(() => {
     const fetchWithCoords = (lat: number, lng: number) => {
@@ -36,18 +39,17 @@ export default function DiscoverPage() {
         });
     };
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => fetchWithCoords(pos.coords.latitude, pos.coords.longitude),
-        (err) => {
-          console.warn("Geolocation blocked, using default location", err);
-          fetchWithCoords(19.0760, 72.8777); // Mumbai
-        }
-      );
+    if (user === undefined) return;
+
+    if (user?.location?.coordinates && user.location.coordinates.length === 2) {
+      const lng = user.location.coordinates[0];
+      const lat = user.location.coordinates[1];
+      fetchWithCoords(lat, lng);
     } else {
-      fetchWithCoords(19.0760, 72.8777); // Mumbai
+      setLocationError("LOCATION NOT SET");
+      setLoading(false);
     }
-  }, [tradeFilter]);
+  }, [tradeFilter, user]);
 
   return (
     <PageShell title="Discover Workers" showBackButton>
@@ -74,6 +76,11 @@ export default function DiscoverPage() {
         {loading ? (
           <div className="flex justify-center py-10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+          </div>
+        ) : locationError ? (
+          <div className="text-center py-10">
+            <p className="text-error font-bold">{locationError}</p>
+            <p className="text-sm text-on-surface-variant mt-2">Please go to Profile > Edit Profile to set your location.</p>
           </div>
         ) : viewMode === "list" ? (
           <div className="space-y-4">

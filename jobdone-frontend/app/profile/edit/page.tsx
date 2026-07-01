@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PageShell from '@/components/ui/PageShell';
 import { useAuth } from '@/context/AuthContext';
+import dynamic from 'next/dynamic';
+
+const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-surface-variant/30 animate-pulse flex items-center justify-center rounded-2xl"><span className="font-bold text-primary">Loading Map...</span></div>
+});
 
 export default function EditProfile() {
   const router = useRouter();
@@ -18,6 +24,40 @@ export default function EditProfile() {
     serviceRadius: '10'
   });
   const [isVerified, setIsVerified] = useState(true); // Default true to hide flash
+  
+  // Location states
+  const [lat, setLat] = useState(0);
+  const [lng, setLng] = useState(0);
+  const [address, setAddress] = useState('');
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [tempCoords, setTempCoords] = useState<[number, number]>([22.3039, 70.8022]);
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await res.json();
+      if (data && data.address) {
+        const city = data.address.city || data.address.town || data.address.village || data.address.county;
+        const state = data.address.state;
+        return `${city || ''}${city && state ? ', ' : ''}${state || 'Unknown Location'}`;
+      }
+    } catch (e) {
+      console.warn("Reverse geocode failed", e);
+    }
+    return 'Custom Location';
+  };
+
+  const getLocation = () => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setLat(pos.coords.latitude);
+        setLng(pos.coords.longitude);
+        const addr = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        setAddress(addr);
+      },
+      () => alert('Could not get location. Please enable location access or pick on map.')
+    );
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -39,6 +79,14 @@ export default function EditProfile() {
             availability: data.data.workerProfile?.availability || 'available',
             serviceRadius: data.data.workerProfile?.serviceRadius || '10'
           });
+          if (data.data.user?.location?.coordinates) {
+            setLat(data.data.user.location.coordinates[1]);
+            setLng(data.data.user.location.coordinates[0]);
+            setTempCoords([data.data.user.location.coordinates[1], data.data.user.location.coordinates[0]]);
+          }
+          if (data.data.user?.address) {
+            setAddress(data.data.user.address);
+          }
         }
       } catch (err) {
         console.error("Error fetching profile", err);
@@ -60,13 +108,18 @@ export default function EditProfile() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId') || 'mockUserId';
       
+      const payload = {
+        ...formData,
+        ...(lat !== 0 && lng !== 0 && { location: { type: 'Point', coordinates: [lng, lat] }, address })
+      };
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/profile/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       
       const data = await res.json();
@@ -156,6 +209,33 @@ export default function EditProfile() {
               </>
             )}
 
+            <div className="space-y-4 pt-4 border-t border-border-subtle/30">
+              <label className="font-label-sm text-on-surface-variant block uppercase tracking-wider font-bold">Your Location</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                      type="button"
+                      onClick={getLocation}
+                      className="flex-1 border-2 border-primary text-primary h-[48px] rounded-xl font-label-lg hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                  >
+                      📍 Update via GPS
+                  </button>
+                  <button
+                      type="button"
+                      onClick={() => setShowMapModal(true)}
+                      className="flex-1 bg-surface-variant/30 text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary transition-all h-[48px] rounded-xl font-bold border border-border-subtle/30 flex items-center justify-center gap-2"
+                  >
+                      🗺️ Pick on Map
+                  </button>
+              </div>
+              
+              {lat !== 0 && (
+                  <div className="bg-surface-warm border border-border-subtle p-3 rounded-lg text-center mt-2">
+                      <p className="text-status-gold font-label-sm font-bold">✓ Location Set</p>
+                      <p className="text-xs text-on-surface-variant mt-1 truncate">{address}</p>
+                  </div>
+              )}
+            </div>
+
             <button 
               type="submit" 
               disabled={saving}
@@ -169,5 +249,66 @@ export default function EditProfile() {
         </>
       )}
     </PageShell>
+    
+    {showMapModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest w-full max-w-2xl h-[70vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden border border-border-subtle/20 animate-in zoom-in-95 duration-200">
+              
+              <div className="p-5 border-b border-border-subtle/30 flex justify-between items-center bg-surface-variant/10">
+                  <h3 className="font-bold text-lg text-on-surface tracking-tight">Pick Location</h3>
+                  <button 
+                      onClick={() => setShowMapModal(false)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-variant/50 text-on-surface hover:bg-error/10 hover:text-error transition-colors"
+                  >
+                      ✕
+                  </button>
+              </div>
+
+              <div className="flex-grow p-4 relative z-0">
+                  <MapPicker 
+                      initialPosition={tempCoords} 
+                      onSelect={(pos) => setTempCoords(pos)} 
+                  />
+              </div>
+
+              <div className="p-5 border-t border-border-subtle/30 bg-surface-variant/10 flex justify-between items-center">
+                  <div className="flex flex-col">
+                      <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Selected Location</span>
+                      <span className="text-sm font-mono text-primary font-bold">
+                          {tempCoords[0].toFixed(4)}, {tempCoords[1].toFixed(4)}
+                      </span>
+                  </div>
+                  <div className="flex gap-2">
+                      <button
+                          onClick={() => {
+                              if (navigator.geolocation) {
+                                  navigator.geolocation.getCurrentPosition(
+                                      (pos) => setTempCoords([pos.coords.latitude, pos.coords.longitude]),
+                                      () => alert("Could not get device location. Please enable location permissions.")
+                                  );
+                              }
+                          }}
+                          className="bg-surface-variant/40 text-on-surface-variant px-4 py-3 rounded-[14px] font-bold hover:bg-surface-variant/60 transition-colors hidden sm:block"
+                      >
+                          📍 Current GPS
+                      </button>
+                      <button 
+                          onClick={async () => {
+                              setLat(tempCoords[0]);
+                              setLng(tempCoords[1]);
+                              const addr = await reverseGeocode(tempCoords[0], tempCoords[1]);
+                              setAddress(addr);
+                              setShowMapModal(false);
+                          }}
+                          className="bg-primary text-on-primary px-6 py-3 rounded-[14px] font-bold shadow-md hover:bg-primary-container transition-colors active:scale-95 border border-white/10"
+                      >
+                          Confirm Location
+                      </button>
+                  </div>
+              </div>
+          </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -45,15 +45,25 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
-        const updateData: any = { name: req.body.name, profilePhoto: req.body.profilePhoto };
-        if (req.body.location) updateData.location = req.body.location;
-        if (req.body.address) updateData.address = req.body.address;
+        const updateData: any = {};
+        if (req.body.name !== undefined) updateData.name = req.body.name;
+        if (req.body.profilePhoto !== undefined) updateData.profilePhoto = req.body.profilePhoto;
+        if (req.body.location !== undefined) updateData.location = req.body.location;
+        if (req.body.address !== undefined) updateData.address = req.body.address;
 
         const user = await User.findByIdAndUpdate(
             userId,
             updateData,
             { new: true }
         ).select('-__v');
+
+        // Sync location to WorkerProfile if the user is a worker
+        if (req.body.location && user?.role === 'worker') {
+            await WorkerProfile.findOneAndUpdate(
+                { userId },
+                { location: req.body.location }
+            );
+        }
 
         res.status(200).json({ success: true, data: user });
     } catch (error) {
@@ -107,12 +117,6 @@ export const getNearbyWorkers = async (req: AuthRequest, res: Response): Promise
         }
 
         const matchStage: any = {
-            location: {
-                $near: {
-                    $geometry: { type: 'Point', coordinates: [parseFloat(lng as string), parseFloat(lat as string)] },
-                    $maxDistance: parseFloat(radius as string) * 1000,
-                },
-            },
             availability: { $ne: 'offline' },
         };
 
@@ -120,9 +124,23 @@ export const getNearbyWorkers = async (req: AuthRequest, res: Response): Promise
             matchStage.trade = new RegExp(trade as string, 'i');
         }
 
-        const workers = await WorkerProfile.find(matchStage)
-            .populate('userId', 'name profilePhoto trustScore trustTier isVerified')
-            .limit(20);
+        let workers = await WorkerProfile.aggregate([
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [parseFloat(lng as string), parseFloat(lat as string)] },
+                    distanceField: 'distance',
+                    maxDistance: parseFloat(radius as string) * 1000,
+                    spherical: true,
+                }
+            },
+            { $match: matchStage },
+            { $limit: 20 }
+        ]);
+
+        workers = await WorkerProfile.populate(workers, { 
+            path: 'userId', 
+            select: 'name profilePhoto trustScore trustTier isVerified' 
+        });
 
         res.status(200).json({ success: true, data: workers });
     } catch (error) {

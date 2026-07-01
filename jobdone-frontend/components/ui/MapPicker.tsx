@@ -48,6 +48,7 @@ function LocationMarker({ position, setPosition, onSelect }: any) {
 
 export default function MapPicker({ initialPosition, onSelect }: MapPickerProps) {
   const [position, setPosition] = useState<[number, number]>(initialPosition);
+  const [mapKey] = useState(new Date().getTime());
 
   // Fix leaflet map sizing issues when rendering inside a modal
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function MapPicker({ initialPosition, onSelect }: MapPickerProps)
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border border-border-subtle/50 relative z-0">
       <MapContainer 
+        key={mapKey}
         center={initialPosition} 
         zoom={14} 
         style={{ height: '100%', width: '100%' }}

@@ -128,24 +128,7 @@ export default function JobBoard() {
         setSearchAddress(user.address || 'Saved Location');
         setTempCoords([lat, lng]);
       } else {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              const lat = position.coords.latitude;
-              const lng = position.coords.longitude;
-              const address = await reverseGeocode(lat, lng);
-              setSearchCoords([lat, lng]);
-              setSearchAddress(address);
-              setTempCoords([lat, lng]);
-            },
-            (err) => {
-              console.warn("Geolocation blocked, no fallback", err);
-              setSearchAddress("LOCATION NOT SET");
-            }
-          );
-        } else {
-          setSearchAddress("LOCATION NOT SET");
-        }
+        setSearchAddress("LOCATION NOT SET");
       }
     }
   }, [user]);
@@ -415,19 +398,35 @@ export default function JobBoard() {
                 </span>
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                      if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(
+                              (pos) => setTempCoords([pos.coords.latitude, pos.coords.longitude]),
+                              () => alert("Could not get device location. Please enable location permissions.")
+                          );
+                      }
+                  }}
+                  className="bg-surface-variant/40 text-on-surface-variant px-4 py-3 rounded-[14px] font-bold hover:bg-surface-variant/60 transition-colors hidden sm:block"
+                >
+                  📍 GPS
+                </button>
                 <button 
                   onClick={async () => {
-                    if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition(async (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lng = pos.coords.longitude;
-                        setTempCoords([lat, lng]);
-                      });
+                    if (user?.location?.coordinates && user.location.coordinates.length === 2) {
+                      const lng = user.location.coordinates[0];
+                      const lat = user.location.coordinates[1];
+                      setSearchCoords([lat, lng]);
+                      setSearchAddress(user.address || 'Saved Location');
+                      setTempCoords([lat, lng]);
+                      setShowMapModal(false);
+                    } else {
+                      alert("No saved location found in your profile.");
                     }
                   }}
                   className="bg-surface-variant/40 text-on-surface-variant px-4 py-3 rounded-[14px] font-bold hover:bg-surface-variant/60 transition-colors"
                 >
-                  🎯 Current
+                  🎯 Saved
                 </button>
                 <button 
                   onClick={async () => {

@@ -5,46 +5,56 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Avatar from '@/components/ui/Avatar';
+import dynamic from 'next/dynamic';
+
+const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-surface-variant/30 animate-pulse flex items-center justify-center rounded-2xl"><span className="font-bold text-primary">Loading Map...</span></div>
+});
 
 export default function ProfileDashboard() {
   const router = useRouter();
-  const { logout, user } = useAuth();
+  const { logout, user, updateUser } = useAuth();
   const [isVerified, setIsVerified] = useState(true);
 
-    const [locationName, setLocationName] = useState<string>('Locating...');
+    const [locationName, setLocationName] = useState<string>('LOCATION NOT SET');
     const [coordinates, setCoordinates] = useState<string>('');
+    const [showMapModal, setShowMapModal] = useState(false);
+    const [tempCoords, setTempCoords] = useState<[number, number]>([22.3039, 70.8022]);
+    const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+
+    const reverseGeocode = async (lat: number, lng: number) => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await res.json();
+        if (data && data.address) {
+          const city = data.address.city || data.address.town || data.address.village || data.address.county;
+          const state = data.address.state;
+          return `${city || ''}${city && state ? ', ' : ''}${state || 'Unknown Location'}`;
+        }
+      } catch (e) {
+        console.warn("Reverse geocode failed", e);
+      }
+      return 'Custom Location';
+    };
 
     useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    setCoordinates(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                    
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                        const data = await res.json();
-                        if (data && data.address) {
-                            const city = data.address.city || data.address.town || data.address.village || data.address.county;
-                            const state = data.address.state;
-                            setLocationName(`${city || ''}${city && state ? ', ' : ''}${state || 'Unknown Location'}`);
-                        } else {
-                            setLocationName('Location found');
-                        }
-                    } catch (err) {
-                        setLocationName('Location found');
-                    }
-                },
-                (err) => {
-                    setLocationName('Location access denied');
-                    setCoordinates('');
-                }
-            );
+        if (user?.address) {
+            setLocationName(user.address);
         } else {
-            setLocationName('Geolocation not supported');
+            setLocationName('LOCATION NOT SET');
         }
-    }, []);
+        
+        if (user?.location?.coordinates && user.location.coordinates.length === 2) {
+            // MongoDB coordinates are [lng, lat]
+            const lat = user.location.coordinates[1];
+            const lng = user.location.coordinates[0];
+            setCoordinates(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            setTempCoords([lat, lng]);
+        } else {
+            setCoordinates('');
+        }
+    }, [user]);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -96,12 +106,20 @@ export default function ProfileDashboard() {
                         <h2 className="text-[22px] font-bold text-on-surface mb-1 tracking-tight">{user?.name || 'User'}</h2>
                         <p className="font-label-sm text-on-surface-variant mb-4">{user?.phone || 'No phone number'}</p>
                         
-                        <div className="flex items-center gap-3 mb-6 bg-surface-variant/20 px-5 py-3 rounded-2xl border border-border-subtle/30 w-full max-w-xs justify-center shadow-sm">
-                            <span className="text-primary text-xl">📍</span>
-                            <div className="flex flex-col text-left">
-                                <span className="font-bold text-sm text-on-surface line-clamp-1">{locationName}</span>
-                                {coordinates && <span className="text-[11px] text-on-surface-variant font-mono tracking-tight">{coordinates}</span>}
+                        <div className="flex flex-col items-center gap-2 mb-6 w-full max-w-xs">
+                            <div className="flex items-center gap-3 bg-surface-variant/20 px-5 py-3 rounded-2xl border border-border-subtle/30 w-full justify-center shadow-sm">
+                                <span className="text-primary text-xl">📍</span>
+                                <div className="flex flex-col text-left">
+                                    <span className="font-bold text-sm text-on-surface line-clamp-1">{locationName}</span>
+                                    {coordinates && <span className="text-[11px] text-on-surface-variant font-mono tracking-tight">{coordinates}</span>}
+                                </div>
                             </div>
+                            <button 
+                                onClick={() => setShowMapModal(true)}
+                                className="text-[12px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-4 py-1.5 rounded-full transition-colors w-full border border-primary/10"
+                            >
+                                Change Location
+                            </button>
                         </div>
                         
                         {!isVerified && user?.role === 'worker' && (
@@ -252,6 +270,97 @@ export default function ProfileDashboard() {
                 </div>
             </div>
         </main>
+        
+        {showMapModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-surface-container-lowest w-full max-w-2xl h-[70vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden border border-border-subtle/20 animate-in zoom-in-95 duration-200">
+                    
+                    <div className="p-5 border-b border-border-subtle/30 flex justify-between items-center bg-surface-variant/10">
+                        <h3 className="font-bold text-lg text-on-surface tracking-tight">Update Profile Location</h3>
+                        <button 
+                            onClick={() => setShowMapModal(false)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-variant/50 text-on-surface hover:bg-error/10 hover:text-error transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <div className="flex-grow p-4 relative z-0">
+                        <MapPicker 
+                            initialPosition={tempCoords} 
+                            onSelect={(pos) => setTempCoords(pos)} 
+                        />
+                    </div>
+
+                    <div className="p-5 border-t border-border-subtle/30 bg-surface-variant/10 flex justify-between items-center">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Selected Location</span>
+                            <span className="text-sm font-mono text-primary font-bold">
+                                {tempCoords[0].toFixed(4)}, {tempCoords[1].toFixed(4)}
+                            </span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => {
+                                    if (navigator.geolocation) {
+                                        navigator.geolocation.getCurrentPosition(
+                                            (pos) => setTempCoords([pos.coords.latitude, pos.coords.longitude]),
+                                            () => alert("Could not get device location. Please enable location permissions.")
+                                        );
+                                    }
+                                }}
+                                className="bg-surface-variant/40 text-on-surface-variant px-4 py-3 rounded-[14px] font-bold hover:bg-surface-variant/60 transition-colors hidden sm:block"
+                            >
+                                📍 Current GPS
+                            </button>
+                            <button 
+                                disabled={isUpdatingLocation}
+                                onClick={async () => {
+                                    setIsUpdatingLocation(true);
+                                    const lat = tempCoords[0];
+                                    const lng = tempCoords[1];
+                                    const addr = await reverseGeocode(lat, lng);
+                                    
+                                    try {
+                                        const token = localStorage.getItem('token');
+                                        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/profile/${user?._id}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${token}`
+                                            },
+                                            body: JSON.stringify({
+                                                location: { type: 'Point', coordinates: [lng, lat] },
+                                                address: addr
+                                            })
+                                        });
+                                        
+                                        const data = await res.json();
+                                        if (data.success) {
+                                            updateUser({
+                                                location: { type: 'Point', coordinates: [lng, lat] },
+                                                address: addr
+                                            });
+                                            setShowMapModal(false);
+                                        } else {
+                                            alert("Failed to save location");
+                                        }
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert("Network error");
+                                    } finally {
+                                        setIsUpdatingLocation(false);
+                                    }
+                                }}
+                                className="bg-primary text-on-primary px-6 py-3 rounded-[14px] font-bold shadow-md hover:bg-primary-container transition-colors active:scale-95 border border-white/10 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {isUpdatingLocation ? 'Saving...' : 'Confirm Location'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }
