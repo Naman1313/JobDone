@@ -78,9 +78,10 @@ export default function DiscoverPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
           </div>
         ) : locationError ? (
-          <div className="text-center py-10">
-            <p className="text-error font-bold">{locationError}</p>
-            <p className="text-sm text-on-surface-variant mt-2">Please go to Profile > Edit Profile to set your location.</p>
+          <div className="flex flex-col items-center justify-center h-48 bg-surface-variant/20 rounded-[24px] border border-error/20 p-6 text-center shadow-inner">
+            <span className="text-4xl mb-3">📍</span>
+            <p className="font-label-lg text-error font-bold">{locationError}</p>
+            <p className="font-body-sm text-on-surface-variant mt-2">Please go to Profile &gt; Edit Profile to set your location.</p>
           </div>
         ) : viewMode === "list" ? (
           <div className="space-y-4">

@@ -138,6 +138,7 @@ export default function EditProfile() {
   };
 
   return (
+    <>
     <PageShell title="Edit Profile" showBackButton backHref="/profile/me">
       {loading ? (
         <div className="p-8 text-center font-body-md text-on-surface-variant animate-pulse">Loading profile...</div>
